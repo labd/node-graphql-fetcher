@@ -1,5 +1,11 @@
 # @labdigital/react-query-opal
 
+## 0.0.4
+
+### Patch Changes
+
+- ec16b7b: Export GraphQLError type
+
 ## 0.0.3
 
 ### Patch Changes

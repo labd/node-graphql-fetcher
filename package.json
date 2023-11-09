@@ -1,6 +1,6 @@
 {
 	"name": "@labdigital/react-query-opal",
-	"version": "0.0.3",
+	"version": "0.0.4",
 	"description": "Custom fetcher for react-query to use with @labdigital/node-federated-token",
 	"main": "./dist/index.js",
 	"module": "./dist/index.mjs",
