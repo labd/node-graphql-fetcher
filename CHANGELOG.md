@@ -1,5 +1,11 @@
 # @labdigital/react-query-opal
 
+## 0.0.5
+
+### Patch Changes
+
+- 35de25c: Move react to peerDependencies
+
 ## 0.0.4
 
 ### Patch Changes
