@@ -4,19 +4,17 @@ import sha256 from "crypto-js/sha256";
 import type { GqlResponse, NextFetchRequestConfig } from "./helpers";
 import { defaultHeaders, extractOperationName } from "./helpers";
 
-export class ServerFetcher {
-	constructor(private endpoint: string) {}
-
+export const initServerFetcher = (url: string) => {
 	/**
 	 * Replace full queries with generated ID's to reduce bandwidth.
 	 * @see https://www.apollographql.com/docs/react/api/link/persisted-queries/#protocol
 	 */
-	async fetch<TResponse, TVariables>(
+	return async <TResponse, TVariables>(
 		astNode: DocumentTypeDecoration<TResponse, TVariables>,
 		variables: TVariables,
 		draftModeEnabled = false,
 		next: NextFetchRequestConfig = {}
-	): Promise<GqlResponse<TResponse>> {
+	): Promise<GqlResponse<TResponse>> => {
 		const query = astNode.toString();
 		const operationName = extractOperationName(query);
 
@@ -30,7 +28,8 @@ export class ServerFetcher {
 
 		// If draft mode has been enabled, skip the APQ, skip data-cache and do a regular POST request
 		if (draftModeEnabled) {
-			return this.gqlPost<TResponse>(
+			return gqlPost<TResponse>(
+				url,
 				JSON.stringify({ operationName, query, variables }),
 				errorPrefix,
 				"no-store",
@@ -45,7 +44,8 @@ export class ServerFetcher {
 		};
 
 		// Otherwise, try to get the cached query
-		const response = await this.gqlPersistedQuery<TResponse>(
+		const response = await gqlPersistedQuery<TResponse>(
+			url,
 			getQueryString(operationName, variables, extensions),
 			cache,
 			next
@@ -53,7 +53,8 @@ export class ServerFetcher {
 
 		// If it doesn't exist, do a POST request anyway and cache it.
 		if (response.errors?.[0]?.message === "PersistedQueryNotFound") {
-			return this.gqlPost<TResponse>(
+			return gqlPost<TResponse>(
+				url,
 				JSON.stringify({ operationName, query, variables, extensions }),
 				errorPrefix,
 				cache,
@@ -62,55 +63,57 @@ export class ServerFetcher {
 		}
 
 		return response;
-	}
+	};
+};
 
-	private gqlPost<T>(
-		body: string,
-		errorPrefix?: string,
-		cache?: RequestCache,
-		next?: NextFetchRequestConfig
-	) {
-		return fetch(this.endpoint, {
-			headers: defaultHeaders,
-			method: "POST",
-			cache,
-			body,
-			// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-			// @ts-ignore
-			next,
-		})
-			.then<GqlResponse<T>>((response) => response.json())
-			.then((response) => {
-				if (response.errors?.length) {
-					// log errors in draft mode
-					if (errorPrefix) {
-						console.error(errorPrefix, response.errors);
-					} else {
-						// Otherwise throw them errors
-						throw new Error(
-							[errorPrefix, JSON.stringify(response.errors, null, 2)].join("\n")
-						);
-					}
+const gqlPost = <T>(
+	url: string,
+	body: string,
+	errorPrefix?: string,
+	cache?: RequestCache,
+	next?: NextFetchRequestConfig
+) => {
+	return fetch(url, {
+		headers: defaultHeaders,
+		method: "POST",
+		cache,
+		body,
+		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+		// @ts-ignore
+		next,
+	})
+		.then<GqlResponse<T>>((response) => response.json())
+		.then((response) => {
+			if (response.errors?.length) {
+				// log errors in draft mode
+				if (errorPrefix) {
+					console.error(errorPrefix, response.errors);
+				} else {
+					// Otherwise throw them errors
+					throw new Error(
+						[errorPrefix, JSON.stringify(response.errors, null, 2)].join("\n")
+					);
 				}
-				return response;
-			});
-	}
+			}
+			return response;
+		});
+};
 
-	private gqlPersistedQuery<T>(
-		queryString: URLSearchParams,
-		cache?: RequestCache,
-		next?: NextFetchRequestConfig
-	) {
-		return fetch(`${this.endpoint}?${queryString}`, {
-			method: "GET",
-			headers: defaultHeaders,
-			cache,
-			// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-			// @ts-ignore
-			next,
-		}).then<GqlResponse<T>>((response) => response.json());
-	}
-}
+const gqlPersistedQuery = <T>(
+	url: string,
+	queryString: URLSearchParams,
+	cache?: RequestCache,
+	next?: NextFetchRequestConfig
+) => {
+	return fetch(`${url}?${queryString}`, {
+		method: "GET",
+		headers: defaultHeaders,
+		cache,
+		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+		// @ts-ignore
+		next,
+	}).then<GqlResponse<T>>((response) => response.json());
+};
 
 const getQueryString = <TVariables>(
 	operationName: string | undefined,

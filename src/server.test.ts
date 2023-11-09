@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { TypedDocumentString, pruneObject } from "./helpers";
-import { ServerFetcher } from "./server";
+import { initServerFetcher } from "./server";
 
 const query = new TypedDocumentString(`
 	query myQuery {
@@ -17,11 +17,11 @@ const errorResponse = JSON.stringify({
 });
 
 describe("gqlServerFetch", () => {
-	const fetcher = new ServerFetcher("https://localhost/graphql");
+	const gqlServerFetch = initServerFetcher("https://localhost/graphql");
 
 	it("should fetch a persisted query", async () => {
 		const mockedFetch = fetchMock.mockResponse(successResponse);
-		const gqlResponse = await fetcher.fetch(query, { myVar: "baz" }, false, {
+		const gqlResponse = await gqlServerFetch(query, { myVar: "baz" }, false, {
 			revalidate: 900,
 		});
 
@@ -53,7 +53,7 @@ describe("gqlServerFetch", () => {
 			.mockResponseOnce(errorResponse)
 			.mockResponseOnce(successResponse);
 
-		const gqlResponse = await fetcher.fetch(query, { myVar: "baz" }, false, {
+		const gqlResponse = await gqlServerFetch(query, { myVar: "baz" }, false, {
 			revalidate: 900,
 		});
 
@@ -84,7 +84,7 @@ describe("gqlServerFetch", () => {
 	});
 	it("should fetch a persisted query without revalidate", async () => {
 		const mockedFetch = fetchMock.mockResponse(successResponse);
-		const gqlResponse = await fetcher.fetch(query, { myVar: "baz" }, false);
+		const gqlResponse = await gqlServerFetch(query, { myVar: "baz" }, false);
 
 		const queryString = new URLSearchParams(
 			pruneObject({
@@ -111,7 +111,7 @@ describe("gqlServerFetch", () => {
 
 	it("should not persist query when in draftmode", async () => {
 		const mockedFetch = fetchMock.mockResponse(successResponse);
-		const gqlResponse = await fetcher.fetch(query, { myVar: "baz" }, true, {
+		const gqlResponse = await gqlServerFetch(query, { myVar: "baz" }, true, {
 			revalidate: 900,
 			tags: ["my-tag"],
 		});

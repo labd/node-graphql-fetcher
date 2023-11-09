@@ -1,4 +1,4 @@
-import { ClientFetcher, initClientFetcher } from "client";
+import { ClientFetcher } from "client";
 import { createContext, useContext } from "react";
 import invariant from "tiny-invariant";
 import * as React from "react";

@@ -10,4 +10,13 @@ export default defineConfig([
 		format: ["esm"],
 		outDir: "dist",
 	},
+	{
+		entry: ["src/server.ts"],
+		clean: true,
+		splitting: false,
+		dts: true,
+		sourcemap: true,
+		format: ["esm"],
+		outDir: "dist",
+	},
 ]);
