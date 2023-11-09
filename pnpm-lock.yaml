@@ -24,10 +24,10 @@ dependencies:
     specifier: ^4.5.0
     version: 4.5.0
   react:
-    specifier: ^18.2.0
+    specifier: '>= 18.0.0'
     version: 18.2.0
   react-dom:
-    specifier: ^18.2.0
+    specifier: '>= 18.2.0'
     version: 18.2.0(react@18.2.0)
   tiny-invariant:
     specifier: ^1.3.1
@@ -116,7 +116,7 @@ packages:
     resolution: {integrity: sha512-px3xvqgb3tyh7PtRNSBm0I5U2wmI+KcJBoM4xIVMEA+9vk3Mc46U3yXc/fTSGd6EPQD90jXVC56fwdWw/+f7oA==}
     engines: {node: '>=14.15.0'}
     peerDependencies:
-      graphql: 16.8.1
+      graphql: ^16.5.0
     dependencies:
       '@apollo/federation-internals': 2.5.6(graphql@16.8.1)
       '@apollo/query-graphs': 2.5.6(graphql@16.8.1)
@@ -127,7 +127,7 @@ packages:
     resolution: {integrity: sha512-ZNJdEcWfKXlFDRYtoCftApQBJl1/aDUBnBfFJeXeTXW4FVhyGotVkWbJUIBlCHMISGmQQDNfRay9Dcp7uIda9A==}
     engines: {node: '>=14.15.0'}
     peerDependencies:
-      graphql: 16.8.1
+      graphql: ^16.5.0
     dependencies:
       '@types/uuid': 9.0.7
       chalk: 4.1.2
@@ -188,7 +188,7 @@ packages:
     resolution: {integrity: sha512-W0Raf+hL93XgF3gNXE0eij1m7DGv1zfxsGEUG/GAuBtasOH3YMN5b4HZZm11IDCrQ45OltrnZtAZX8c6UqskrA==}
     engines: {node: '>=14.15.0'}
     peerDependencies:
-      graphql: 16.8.1
+      graphql: ^16.5.0
     dependencies:
       '@apollo/federation-internals': 2.5.6(graphql@16.8.1)
       deep-equal: 2.2.3
@@ -201,7 +201,7 @@ packages:
     resolution: {integrity: sha512-7qrQl4/s1FOK0TZaa+0WwL17Us9Oy1I8bfpfjf+3xp8NtgOnFijXzJ32IOdjhW+mkt5EC4LrkBUWvygCULuMyQ==}
     engines: {node: '>=14.15.0'}
     peerDependencies:
-      graphql: 16.8.1
+      graphql: ^16.5.0
     dependencies:
       '@apollo/federation-internals': 2.5.6(graphql@16.8.1)
       '@apollo/query-graphs': 2.5.6(graphql@16.8.1)
