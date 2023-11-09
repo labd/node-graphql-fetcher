@@ -3,6 +3,7 @@ import { pruneObject } from "./helpers";
 import sha256 from "crypto-js/sha256";
 import type { GqlResponse, NextFetchRequestConfig } from "./helpers";
 import { defaultHeaders, extractOperationName } from "./helpers";
+export { type GqlResponse } from "./helpers";
 
 export const initServerFetcher = (url: string) => {
 	/**
