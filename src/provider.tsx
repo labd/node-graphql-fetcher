@@ -1,5 +1,6 @@
 import { ClientFetcher, initClientFetcher } from "client";
 import { createContext, useContext } from "react";
+import invariant from "tiny-invariant";
 import * as React from "react";
 
 /**
@@ -32,10 +33,15 @@ export const useClientGqlFetcher = (): ClientFetcher => {
 	const context = useContext(ClientGqlFetcherContext);
 
 	if (context === undefined) {
-		throw new Error(
-			"useClientGqlFetcher must be used within a ClientGqlFetcherProvider"
-		);
+		if ("production" !== process.env.NODE_ENV) {
+			invariant(
+				false,
+				"useClientGqlFetcher must be used within a ClientGqlFetcherProvider"
+			);
+		} else {
+			invariant(false);
+		}
 	}
 
-	return context;
+	return context as ClientFetcher;
 };
