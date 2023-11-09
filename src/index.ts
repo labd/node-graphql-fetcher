@@ -1,3 +1,3 @@
 export { initClientFetcher } from "./client";
 export { ClientGqlFetcherProvider, useClientGqlFetcher } from "./provider";
-export { type GqlResponse } from "./helpers";
+export type { GraphQLError, GqlResponse } from "./helpers";
