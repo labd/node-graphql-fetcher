@@ -33,7 +33,7 @@ jobs:
     needs: lint
     strategy:
       matrix:
-        node: ["20.x"]
+        node: ["18.x", "20.x"]
         os: [ubuntu-latest]
 
     steps:

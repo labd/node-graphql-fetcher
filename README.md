@@ -12,3 +12,14 @@ Only used for fetching from GraphQL endpoints.
 - Next data cache support
 - Preview mode support to disable all caches
 
+## Notes
+
+### Node 18.x requires webcrypto on globalThis
+
+From node 20.x onwards the WebCrypto API is available on globalThis, versions before 20.x will need a small polyfill:
+
+```
+	if (typeof window === "undefined" && !globalThis.crypto) {
+		globalThis.crypto = require("node:crypto").webcrypto;
+	}
+```
