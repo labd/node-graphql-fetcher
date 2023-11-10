@@ -1,6 +1,11 @@
-import invariant from "tiny-invariant";
 import type { GqlResponse, TypedDocumentString } from "./helpers";
-import { createSha256, defaultHeaders, extractOperationName } from "./helpers";
+import {
+	createSha256,
+	defaultHeaders,
+	extractOperationName,
+	handleResponse,
+	hasPersistedQueryError,
+} from "./helpers";
 
 type beforeRequestFn = () => Promise<void>;
 
@@ -56,7 +61,6 @@ export const initClientFetcher =
 
 		if (persisted) {
 			// Do persisted query
-			// TODO: Use shared persisted query fetcher
 			const response = await fetch(`${endpoint}?op=${operationName}`, {
 				headers: defaultHeaders,
 				method: "GET",
@@ -65,7 +69,9 @@ export const initClientFetcher =
 			});
 
 			// Only handleResponse and return if the server can handle the APQ
-			if (response.ok) {
+			const hasError = await hasPersistedQueryError(response);
+
+			if (!hasError) {
 				return handleResponse(response);
 			}
 		}
@@ -79,20 +85,3 @@ export const initClientFetcher =
 
 		return handleResponse(response);
 	};
-
-const handleResponse = async (response: Response) => {
-	invariant(
-		response.ok,
-		`Response not ok: ${response.status} ${response.statusText}`
-	);
-
-	const body = await response
-		.json()
-		.catch((err) => invariant(false, "Could not parse JSON from response"));
-
-	// Check for GraphQL errors
-	const hasErrors = body.errors?.length && body.errors.length > 0;
-	invariant(hasErrors, JSON.stringify(body.errors, null, 2));
-
-	return body;
-};
