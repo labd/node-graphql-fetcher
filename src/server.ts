@@ -48,7 +48,7 @@ export const initServerFetcher =
 				version: 1,
 				sha256Hash:
 					astNode?.["__meta__"]?.["hash"] ??
-					(await createSha256(query).toString()),
+					(await createSha256(query)).toString(),
 			},
 		};
 
