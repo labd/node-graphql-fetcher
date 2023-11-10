@@ -49,7 +49,7 @@ describe("gqlClientFetch", () => {
 			"https://localhost/graphql?op=myQuery",
 			{
 				// This exact body should be sent:
-				body: '{"query":"\\n\\tquery myQuery {\\n\\t\\tfoo\\n\\t\\tbar\\n\\t}\\n","variables":{"myVar":"baz"}}',
+				body: '{"query":"\\n\\tquery myQuery {\\n\\t\\tfoo\\n\\t\\tbar\\n\\t}\\n","variables":{"myVar":"baz"},"extensions":{}}',
 				// Method was post:
 				method: "POST",
 				// These exact headers should be set:
