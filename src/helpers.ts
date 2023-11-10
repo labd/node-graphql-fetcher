@@ -59,10 +59,14 @@ export const createErrorPrefix = (...args: any[]) =>
  * @param message Message to hash
  */
 export const createSha256 = async (message: string) => {
-	const encoder = new TextEncoder();
-	const data = encoder.encode(message);
+	const hash = await crypto.subtle.digest(
+		"SHA-256",
+		new TextEncoder().encode(message)
+	);
 
-	return await crypto.subtle.digest("SHA-256", data);
+	return Array.from(new Uint8Array(hash))
+		.map((b) => b.toString(16).padStart(2, "0"))
+		.join("");
 };
 
 /**
@@ -81,8 +85,8 @@ export const handleResponse = async (response: Response) => {
 		.catch((err) => invariant(false, "Could not parse JSON from response"));
 
 	// Check for GraphQL errors
-	const hasErrors = body.errors?.length && body.errors.length > 0;
-	invariant(hasErrors, JSON.stringify(body.errors, null, 2));
+	const hasNoErrors = !(body.errors?.length && body.errors.length > 0);
+	invariant(hasNoErrors, JSON.stringify(body.errors, null, 2));
 
 	return body;
 };

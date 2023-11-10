@@ -47,8 +47,7 @@ export const initServerFetcher =
 			persistedQuery: {
 				version: 1,
 				sha256Hash:
-					astNode?.["__meta__"]?.["hash"] ??
-					(await createSha256(query)).toString(),
+					astNode?.["__meta__"]?.["hash"] ?? (await createSha256(query)),
 			},
 		};
 

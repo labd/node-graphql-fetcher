@@ -42,9 +42,7 @@ export const initClientFetcher =
 		let hash = "";
 		let extensions = {};
 		if (persisted) {
-			hash =
-				astNode?.["__meta__"]?.["hash"] ??
-				(await createSha256(query)).toString();
+			hash = astNode?.["__meta__"]?.["hash"] ?? (await createSha256(query));
 
 			extensions = {
 				persistedQuery: {
