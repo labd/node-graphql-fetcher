@@ -46,3 +46,13 @@ export class TypedDocumentString<TResult, TVariables>
 		return this.value;
 	}
 }
+
+export const createErrorPrefix = (...args: any[]) =>
+	["Error in query:", ...args].join("\n");
+
+export const createSha256 = async (message: string) => {
+	const encoder = new TextEncoder();
+	const data = encoder.encode(message);
+
+	return await crypto.subtle.digest("SHA-256", data);
+};

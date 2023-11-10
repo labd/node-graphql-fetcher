@@ -1,33 +1,37 @@
-import { DocumentTypeDecoration } from "@graphql-typed-document-node/core";
-import { pruneObject } from "./helpers";
-import sha256 from "crypto-js/sha256";
-import type { GqlResponse, NextFetchRequestConfig } from "./helpers";
-import { defaultHeaders, extractOperationName } from "./helpers";
+import type {
+	GqlResponse,
+	NextFetchRequestConfig,
+	TypedDocumentString,
+} from "./helpers";
+import {
+	createErrorPrefix,
+	createSha256,
+	defaultHeaders,
+	extractOperationName,
+	pruneObject,
+} from "./helpers";
 
-export const initServerFetcher = (url: string) => {
+export const initServerFetcher =
+	(url: string) =>
 	/**
 	 * Replace full queries with generated ID's to reduce bandwidth.
 	 * @see https://www.apollographql.com/docs/react/api/link/persisted-queries/#protocol
 	 */
-	return async <TResponse, TVariables>(
-		astNode: DocumentTypeDecoration<TResponse, TVariables>,
+	async <TResponse, TVariables>(
+		astNode: TypedDocumentString<TResponse, TVariables>,
 		variables: TVariables,
-		draftModeEnabled = false,
+		preview = false, // Preview mode disables all caching, used for previewing draft content
 		next: NextFetchRequestConfig = {}
 	): Promise<GqlResponse<TResponse>> => {
 		const query = astNode.toString();
 		const operationName = extractOperationName(query);
-
-		const errorPrefix = draftModeEnabled
-			? [
-					"ERROR IN QUERY:",
-					operationName,
-					JSON.stringify(variables, null, 2),
-			  ].join("\n")
-			: undefined;
+		const errorPrefix =
+			preview || process.env.NODE_ENV === "development"
+				? createErrorPrefix(operationName, JSON.stringify(variables, null, 2))
+				: undefined;
 
 		// If draft mode has been enabled, skip the APQ, skip data-cache and do a regular POST request
-		if (draftModeEnabled) {
+		if (preview) {
 			return gqlPost<TResponse>(
 				url,
 				JSON.stringify({ operationName, query, variables }),
@@ -40,7 +44,12 @@ export const initServerFetcher = (url: string) => {
 		// Disable cache when revalidate is not set
 		const cache = next.revalidate === undefined ? "no-store" : undefined;
 		const extensions = {
-			persistedQuery: { version: 1, sha256Hash: sha256(query).toString() },
+			persistedQuery: {
+				version: 1,
+				sha256Hash:
+					astNode?.["__meta__"]?.["hash"] ??
+					(await createSha256(query).toString()),
+			},
 		};
 
 		// Otherwise, try to get the cached query
@@ -64,7 +73,6 @@ export const initServerFetcher = (url: string) => {
 
 		return response;
 	};
-};
 
 const gqlPost = <T>(
 	url: string,
@@ -72,8 +80,8 @@ const gqlPost = <T>(
 	errorPrefix?: string,
 	cache?: RequestCache,
 	next?: NextFetchRequestConfig
-) => {
-	return fetch(url, {
+) =>
+	fetch(url, {
 		headers: defaultHeaders,
 		method: "POST",
 		cache,
@@ -97,15 +105,14 @@ const gqlPost = <T>(
 			}
 			return response;
 		});
-};
 
 const gqlPersistedQuery = <T>(
 	url: string,
 	queryString: URLSearchParams,
 	cache?: RequestCache,
 	next?: NextFetchRequestConfig
-) => {
-	return fetch(`${url}?${queryString}`, {
+) =>
+	fetch(`${url}?${queryString}`, {
 		method: "GET",
 		headers: defaultHeaders,
 		cache,
@@ -113,7 +120,6 @@ const gqlPersistedQuery = <T>(
 		// @ts-ignore
 		next,
 	}).then<GqlResponse<T>>((response) => response.json());
-};
 
 const getQueryString = <TVariables>(
 	operationName: string | undefined,

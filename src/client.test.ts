@@ -11,7 +11,6 @@ import createFetchMock from "vitest-fetch-mock";
 import { initClientFetcher } from "./client";
 import { TypedDocumentString } from "./helpers";
 
-
 const query = new TypedDocumentString(/* GraphQL */ `
 	query myQuery {
 		foo

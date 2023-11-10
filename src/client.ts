@@ -1,18 +1,20 @@
-import { DocumentTypeDecoration } from "@graphql-typed-document-node/core";
-import type { GqlResponse } from "./helpers";
-import { defaultHeaders, extractOperationName } from "./helpers";
+import invariant from "tiny-invariant";
+import type { GqlResponse, TypedDocumentString } from "./helpers";
+import { createSha256, defaultHeaders, extractOperationName } from "./helpers";
 
 type beforeRequestFn = () => Promise<void>;
 
+type Options = {
+	beforeRequest?: beforeRequestFn;
+};
+
 export type ClientFetcher = <TResponse, TVariables>(
-	astNode: DocumentTypeDecoration<TResponse, TVariables>,
+	astNode: TypedDocumentString<TResponse, TVariables>,
 	variables?: TVariables
 ) => Promise<GqlResponse<TResponse>>;
 
-export const initClientFetcher = (
-	endpoint: string,
-	beforeRequestFn?: beforeRequestFn
-): ClientFetcher => {
+export const initClientFetcher =
+	(endpoint: string, { beforeRequest }: Options = {}): ClientFetcher =>
 	/**
 	 * Executes a GraphQL query post request on the client.
 	 *
@@ -21,29 +23,47 @@ export const initClientFetcher = (
 	 *
 	 * There is no APQ being used since these queries often contain user information.
 	 */
-	return async <TResponse, TVariables>(
-		astNode: DocumentTypeDecoration<TResponse, TVariables>,
+	async <TResponse, TVariables>(
+		astNode: TypedDocumentString<TResponse, TVariables>,
 		variables?: TVariables
 	): Promise<GqlResponse<TResponse>> => {
 		const query = astNode.toString();
 		const operationName = extractOperationName(query);
 
+		const hash =
+			astNode?.["__meta__"]?.["hash"] ?? (await createSha256(query).toString());
+
+		const extensions = {
+			persistedQuery: {
+				version: 1,
+				sha256Hash: hash,
+			},
+		};
+
 		// Run before hooks
-		if (beforeRequestFn) {
-			await beforeRequestFn();
+		if (beforeRequest) {
+			await beforeRequest();
 		}
 
 		const response = await fetch(`${endpoint}?op=${operationName}`, {
 			headers: defaultHeaders,
 			method: "POST",
-			body: JSON.stringify({ query, variables }),
+			body: JSON.stringify({ query, variables, extensions }),
 			credentials: "include",
-		}).then<GqlResponse<TResponse>>((r) => r.json());
+		});
 
-		if (response.errors?.length) {
-			throw new Error(JSON.stringify(response.errors, null, 2));
-		}
+		invariant(
+			response.ok,
+			`Response not ok: ${response.status} ${response.statusText}`
+		);
 
-		return response;
+		const body = await response
+			.json()
+			.catch((err) => invariant(false, "Could not parse JSON from response"));
+
+		// Check for GraphQL errors
+		const hasErrors = body.errors?.length && body.errors.length > 0;
+		invariant(hasErrors, JSON.stringify(body.errors, null, 2));
+
+		return body;
 	};
-};

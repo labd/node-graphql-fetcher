@@ -20,5 +20,6 @@ module.exports = {
 				allow: ["warn", "error", "info"],
 			},
 		],
+		"no-mixed-spaces-and-tabs": "off",
 	},
 };
