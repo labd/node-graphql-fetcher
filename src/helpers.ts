@@ -81,7 +81,9 @@ export const handleResponse = async (response: Response) => {
 	);
 	const body = await response
 		.json()
-		.catch((err) => invariant(false, "Could not parse JSON from response: " + err));
+		.catch((err) =>
+			invariant(false, "Could not parse JSON from response: " + err)
+		);
 
 	// Check for GraphQL errors
 	const hasNoErrors = !(body.errors?.length && body.errors.length > 0);

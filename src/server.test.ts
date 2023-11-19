@@ -30,7 +30,7 @@ describe("gqlServerFetch", () => {
 				operationName: "myQuery",
 				variables: '{"myVar":"baz"}',
 				extensions: `{"persistedQuery":{"version":1,"sha256Hash":"${hash}"}}`,
-			}),
+			})
 		);
 
 		expect(gqlResponse).toEqual(response);
@@ -43,7 +43,7 @@ describe("gqlServerFetch", () => {
 					"Content-Type": "application/json",
 				},
 				next: { revalidate: 900 },
-			},
+			}
 		);
 	});
 
@@ -79,7 +79,7 @@ describe("gqlServerFetch", () => {
 					"Content-Type": "application/json",
 				},
 				next: { revalidate: 900 },
-			},
+			}
 		);
 	});
 	it("should fetch a persisted query without revalidate", async () => {
@@ -91,7 +91,7 @@ describe("gqlServerFetch", () => {
 				operationName: "myQuery",
 				variables: '{"myVar":"baz"}',
 				extensions: `{"persistedQuery":{"version":1,"sha256Hash":"${hash}"}}`,
-			}),
+			})
 		);
 
 		expect(gqlResponse).toEqual(response);
@@ -105,7 +105,7 @@ describe("gqlServerFetch", () => {
 				},
 				cache: "no-store",
 				next: { revalidate: undefined },
-			},
+			}
 		);
 	});
 
