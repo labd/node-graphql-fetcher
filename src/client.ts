@@ -6,6 +6,7 @@ import {
 	handleResponse,
 	hasPersistedQueryError,
 } from "./helpers";
+import PQueue from "p-queue";
 
 type beforeRequestFn = () => Promise<void>;
 
@@ -14,28 +15,34 @@ type Options = {
 	persisted?: boolean;
 };
 
+type FetcherOptions = {
+	queueName?: string;
+};
+
 export type ClientFetcher = <TResponse, TVariables>(
 	astNode: TypedDocumentString<TResponse, TVariables>,
-	variables?: TVariables
+	variables?: TVariables,
+	options?: FetcherOptions
 ) => Promise<GqlResponse<TResponse>>;
 
-export const initClientFetcher =
-	(
+const queueMap = new Map<string, PQueue>();
+
+const getQueue = (name: string) => {
+	if (!queueMap.has(name)) {
+		queueMap.set(name, new PQueue({ concurrency: 1 }));
+	}
+	return queueMap.get(name);
+};
+
+export const initClientFetcher = (
+	endpoint: string,
+	{ beforeRequest, persisted }: Options = {}
+): ClientFetcher => {
+	const fetchAndHandleResponse = async <TResponse, TVariables>(
 		endpoint: string,
-		{ beforeRequest, persisted }: Options = {}
-	): ClientFetcher =>
-	/**
-	 * Executes a GraphQL query post request on the client.
-	 *
-	 * This is the only fetcher that uses user information in the call since all user information is only
-	 * used after rendering the page for caching reasons.
-	 *
-	 * There is no APQ being used since these queries often contain user information.
-	 */
-	async <TResponse, TVariables>(
 		astNode: TypedDocumentString<TResponse, TVariables>,
 		variables?: TVariables
-	): Promise<GqlResponse<TResponse>> => {
+	) => {
 		const query = astNode.toString();
 		const operationName = extractOperationName(query);
 
@@ -83,3 +90,26 @@ export const initClientFetcher =
 
 		return handleResponse(response);
 	};
+
+	/**
+	 * Executes a GraphQL query post request on the client.
+	 *
+	 * This is the only fetcher that uses user information in the call since all user information is only
+	 * used after rendering the page for caching reasons.
+	 *
+	 * There is no APQ being used since these queries often contain user information.
+	 */
+	return async <TResponse, TVariables>(
+		astNode: TypedDocumentString<TResponse, TVariables>,
+		variables?: TVariables,
+		options?: FetcherOptions
+	): Promise<GqlResponse<TResponse>> => {
+		if (options?.queueName) {
+			const queue = getQueue(options.queueName);
+			return queue?.add(() =>
+				fetchAndHandleResponse(endpoint, astNode, variables)
+			);
+		}
+		return fetchAndHandleResponse(endpoint, astNode, variables);
+	};
+};

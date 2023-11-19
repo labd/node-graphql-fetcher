@@ -74,4 +74,90 @@ describe("gqlClientFetch", () => {
 			expect.anything() // <- body, method, headers, etc, are tested in the above
 		);
 	});
+
+	// Run test without any queueing options, so request-2 is handled before
+	// request-1
+	it("should not queue multiple mutations", async () => {
+		const callOrder: string[] = [];
+		const delay = (ms: number) =>
+			new Promise((resolve) => setTimeout(resolve, ms));
+
+		fetchMock.mockResponse(async (req) => {
+			const data = await req.json();
+			if (data.variables.myVar === "request-1") {
+				return delay(50).then(() => {
+					// Simulate delay
+					callOrder.push("request-1");
+					return Promise.resolve(responseString); // Response for myMutation1
+				});
+			} else if (data.variables.myVar === "request-2") {
+				return Promise.resolve().then(() => {
+					callOrder.push("request-2");
+					return responseString; // Response for myMutation2
+				});
+			}
+			return "404";
+		});
+
+		const fetcherPromise1 = fetcher(mutation, { myVar: "request-1" });
+		const fetcherPromise2 = fetcher(mutation, { myVar: "request-2" });
+
+		const [gqlResponse1, gqlResponse2] = await Promise.all([
+			fetcherPromise1,
+			fetcherPromise2,
+		]);
+
+		// Check if the responses are as expected
+		expect(gqlResponse1).toEqual(response);
+		expect(gqlResponse2).toEqual(response);
+
+		// Check the order of calls
+		expect(callOrder).toEqual(["request-2", "request-1"]);
+	});
+
+	it("should queue multiple mutations", async () => {
+		const callOrder: string[] = [];
+		const delay = (ms: number) =>
+			new Promise((resolve) => setTimeout(resolve, ms));
+
+		fetchMock.mockResponse(async (req) => {
+			const data = await req.json();
+			if (data.variables.myVar === "request-1") {
+				return delay(50).then(() => {
+					// Simulate delay
+					callOrder.push("request-1");
+					return Promise.resolve(responseString); // Response for myMutation1
+				});
+			} else if (data.variables.myVar === "request-2") {
+				return Promise.resolve().then(() => {
+					callOrder.push("request-2");
+					return responseString; // Response for myMutation2
+				});
+			}
+			return "404";
+		});
+
+		const fetcherPromise1 = fetcher(
+			mutation,
+			{ myVar: "request-1" },
+			{ queueName: "myQueue" }
+		);
+		const fetcherPromise2 = fetcher(
+			mutation,
+			{ myVar: "request-2" },
+			{ queueName: "myQueue" }
+		);
+
+		const [gqlResponse1, gqlResponse2] = await Promise.all([
+			fetcherPromise1,
+			fetcherPromise2,
+		]);
+
+		// Check if the responses are as expected
+		expect(gqlResponse1).toEqual(response);
+		expect(gqlResponse2).toEqual(response);
+
+		// Check the order of calls
+		expect(callOrder).toEqual(["request-1", "request-2"]);
+	});
 });
