@@ -1,5 +1,12 @@
 # @labdigital/react-query-opal
 
+## 0.1.0
+
+### Minor Changes
+
+- 4268399: Allow passing cache (RequestCache) parameter
+- 4268399: Remove outputting errors to console.log
+
 ## 0.0.5
 
 ### Patch Changes
