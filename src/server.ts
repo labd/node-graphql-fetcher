@@ -1,7 +1,6 @@
 import { DocumentTypeDecoration } from "@graphql-typed-document-node/core";
 import type { GqlResponse, NextFetchRequestConfig } from "./helpers";
 import {
-	createErrorPrefix,
 	createSha256,
 	defaultHeaders,
 	extractOperationName,
@@ -23,17 +22,12 @@ export const initServerFetcher =
 	): Promise<GqlResponse<TResponse>> => {
 		const query = astNode.toString();
 		const operationName = extractOperationName(query);
-		const errorPrefix =
-			preview || process.env.NODE_ENV === "development"
-				? createErrorPrefix(operationName, JSON.stringify(variables, null, 2))
-				: undefined;
 
 		// If draft mode has been enabled, skip the APQ, skip data-cache and do a regular POST request
 		if (preview) {
 			return gqlPost<TResponse>(
 				url,
 				JSON.stringify({ operationName, query, variables }),
-				errorPrefix,
 				"no-store",
 				{ ...next, revalidate: undefined }
 			);
@@ -61,7 +55,6 @@ export const initServerFetcher =
 			return gqlPost<TResponse>(
 				url,
 				JSON.stringify({ operationName, query, variables, extensions }),
-				errorPrefix,
 				cache,
 				next
 			);
@@ -73,7 +66,6 @@ export const initServerFetcher =
 const gqlPost = <T>(
 	url: string,
 	body: string,
-	errorPrefix?: string,
 	cache?: RequestCache,
 	next?: NextFetchRequestConfig
 ) =>
@@ -89,15 +81,7 @@ const gqlPost = <T>(
 		.then<GqlResponse<T>>((response) => response.json())
 		.then((response) => {
 			if (response.errors?.length) {
-				// log errors in draft mode
-				if (errorPrefix) {
-					console.error(errorPrefix, response.errors);
-				} else {
-					// Otherwise throw them errors
-					throw new Error(
-						[errorPrefix, JSON.stringify(response.errors, null, 2)].join("\n")
-					);
-				}
+				throw new Error(JSON.stringify(response.errors, null, 2));
 			}
 			return response;
 		});
