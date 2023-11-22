@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { pruneObject } from "./helpers";
 import { initServerFetcher } from "./server";
 import { TypedDocumentString } from "./testing";
 
@@ -21,16 +22,21 @@ describe("gqlServerFetch", () => {
 
 	it("should fetch a persisted query", async () => {
 		const mockedFetch = fetchMock.mockResponse(successResponse);
-		const gqlResponse = await gqlServerFetch(query, { myVar: "baz" }, false, {
-			revalidate: 900,
-		});
+		const gqlResponse = await gqlServerFetch(
+			query,
+			{ myVar: "baz" },
+			"default",
+			{
+				revalidate: 900,
+			}
+		);
 
 		const queryString = new URLSearchParams(
 			pruneObject({
 				operationName: "myQuery",
 				variables: '{"myVar":"baz"}',
 				extensions: `{"persistedQuery":{"version":1,"sha256Hash":"${hash}"}}`,
-			}),
+			})
 		);
 
 		expect(gqlResponse).toEqual(response);
@@ -42,8 +48,9 @@ describe("gqlServerFetch", () => {
 				headers: {
 					"Content-Type": "application/json",
 				},
+				cache: "default",
 				next: { revalidate: 900 },
-			},
+			}
 		);
 	});
 
@@ -53,9 +60,14 @@ describe("gqlServerFetch", () => {
 			.mockResponseOnce(errorResponse)
 			.mockResponseOnce(successResponse);
 
-		const gqlResponse = await gqlServerFetch(query, { myVar: "baz" }, false, {
-			revalidate: 900,
-		});
+		const gqlResponse = await gqlServerFetch(
+			query,
+			{ myVar: "baz" },
+			"default",
+			{
+				revalidate: 900,
+			}
+		);
 
 		expect(gqlResponse).toEqual(response);
 		expect(mockedFetch).toHaveBeenCalledTimes(2);
@@ -78,20 +90,26 @@ describe("gqlServerFetch", () => {
 				headers: {
 					"Content-Type": "application/json",
 				},
+				cache: 'default',
 				next: { revalidate: 900 },
-			},
+			}
 		);
 	});
 	it("should fetch a persisted query without revalidate", async () => {
 		const mockedFetch = fetchMock.mockResponse(successResponse);
-		const gqlResponse = await gqlServerFetch(query, { myVar: "baz" }, false);
+		const gqlResponse = await gqlServerFetch(
+			query,
+			{ myVar: "baz" },
+			"no-store",
+			{ revalidate: undefined }
+		);
 
 		const queryString = new URLSearchParams(
 			pruneObject({
 				operationName: "myQuery",
 				variables: '{"myVar":"baz"}',
 				extensions: `{"persistedQuery":{"version":1,"sha256Hash":"${hash}"}}`,
-			}),
+			})
 		);
 
 		expect(gqlResponse).toEqual(response);
@@ -105,31 +123,9 @@ describe("gqlServerFetch", () => {
 				},
 				cache: "no-store",
 				next: { revalidate: undefined },
-			},
+			}
 		);
 	});
 
-	it("should not persist query when in draftmode", async () => {
-		const mockedFetch = fetchMock.mockResponse(successResponse);
-		const gqlResponse = await gqlServerFetch(query, { myVar: "baz" }, true, {
-			revalidate: 900,
-			tags: ["my-tag"],
-		});
 
-		expect(gqlResponse).toEqual(response);
-		expect(mockedFetch).toHaveBeenCalledTimes(1);
-		expect(mockedFetch).toHaveBeenCalledWith(`https://localhost/graphql`, {
-			method: "POST", // <- Note that for persisted queries, the method is 'GET'
-			headers: {
-				"Content-Type": "application/json",
-			},
-			body: JSON.stringify({
-				operationName: "myQuery",
-				query: query.toString(),
-				variables: { myVar: "baz" },
-			}),
-			cache: "no-store",
-			next: { revalidate: undefined, tags: ["my-tag"] },
-		});
-	});
 });

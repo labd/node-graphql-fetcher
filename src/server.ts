@@ -17,24 +17,13 @@ export const initServerFetcher =
 	async <TResponse, TVariables>(
 		astNode: DocumentTypeDecoration<TResponse, TVariables>,
 		variables: TVariables,
-		preview = false, // Preview mode disables all caching, used for previewing draft content
+		cache: RequestCache,
 		next: NextFetchRequestConfig = {}
 	): Promise<GqlResponse<TResponse>> => {
 		const query = astNode.toString();
 		const operationName = extractOperationName(query);
 
-		// If draft mode has been enabled, skip the APQ, skip data-cache and do a regular POST request
-		if (preview) {
-			return gqlPost<TResponse>(
-				url,
-				JSON.stringify({ operationName, query, variables }),
-				"no-store",
-				{ ...next, revalidate: undefined }
-			);
-		}
-
 		// Disable cache when revalidate is not set
-		const cache = next.revalidate === undefined ? "no-store" : undefined;
 		const extensions = {
 			persistedQuery: {
 				version: 1,
@@ -66,14 +55,14 @@ export const initServerFetcher =
 const gqlPost = <T>(
 	url: string,
 	body: string,
-	cache?: RequestCache,
+	cache: RequestCache,
 	next?: NextFetchRequestConfig
 ) =>
 	fetch(url, {
 		headers: defaultHeaders,
 		method: "POST",
-		cache,
 		body,
+		cache,
 		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 		// @ts-ignore
 		next,
@@ -89,7 +78,7 @@ const gqlPost = <T>(
 const gqlPersistedQuery = <T>(
 	url: string,
 	queryString: URLSearchParams,
-	cache?: RequestCache,
+	cache: RequestCache,
 	next?: NextFetchRequestConfig
 ) =>
 	fetch(`${url}?${queryString}`, {
