@@ -10,6 +10,10 @@ export const defaultHeaders: Record<string, string> = {
 	"Content-Type": "application/json",
 };
 
+export const getQueryHash = <TResult, TVariables>(
+	query: DocumentTypeDecoration<TResult, TVariables>
+) => (query as any)?.["__meta__"]?.["hash"];
+
 export type GraphQLError = {
 	message: string;
 	extensions: {
@@ -32,27 +36,6 @@ export interface NextFetchRequestConfig {
 
 export const pruneObject = <T>(object: T): Partial<T> =>
 	JSON.parse(JSON.stringify(object ?? null));
-
-export class TypedDocumentString<TResult, TVariables>
-	extends String
-	implements DocumentTypeDecoration<TResult, TVariables>
-{
-	__apiType?: DocumentTypeDecoration<TResult, TVariables>["__apiType"];
-
-	constructor(private value: string, public __meta__?: Record<string, any>) {
-		super(value);
-	}
-
-	toString(): string & DocumentTypeDecoration<TResult, TVariables> {
-		return this.value;
-	}
-}
-
-/**
- * Prefix for error messages
- */
-export const createErrorPrefix = (...args: any[]) =>
-	["Error in query:", ...args].join("\n");
 
 /**
  * Simple wrapper to create a SHA256 hash with subtle crypto
