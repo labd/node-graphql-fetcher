@@ -1,8 +1,10 @@
-import type { GqlResponse, TypedDocumentString } from "./helpers";
+import { DocumentTypeDecoration } from "@graphql-typed-document-node/core";
+import type { GqlResponse } from "./helpers";
 import {
 	createSha256,
 	defaultHeaders,
 	extractOperationName,
+	getQueryHash,
 	handleResponse,
 	hasPersistedQueryError,
 } from "./helpers";
@@ -15,7 +17,7 @@ type Options = {
 };
 
 export type ClientFetcher = <TResponse, TVariables>(
-	astNode: TypedDocumentString<TResponse, TVariables>,
+	astNode: DocumentTypeDecoration<TResponse, TVariables>,
 	variables?: TVariables
 ) => Promise<GqlResponse<TResponse>>;
 
@@ -33,7 +35,7 @@ export const initClientFetcher =
 	 * There is no APQ being used since these queries often contain user information.
 	 */
 	async <TResponse, TVariables>(
-		astNode: TypedDocumentString<TResponse, TVariables>,
+		astNode: DocumentTypeDecoration<TResponse, TVariables>,
 		variables?: TVariables
 	): Promise<GqlResponse<TResponse>> => {
 		const query = astNode.toString();
@@ -42,7 +44,7 @@ export const initClientFetcher =
 		let hash = "";
 		let extensions = {};
 		if (persisted) {
-			hash = astNode?.["__meta__"]?.["hash"] ?? (await createSha256(query));
+			hash = getQueryHash(astNode) ?? (await createSha256(query));
 
 			extensions = {
 				persistedQuery: {

@@ -1,13 +1,11 @@
-import type {
-	GqlResponse,
-	NextFetchRequestConfig,
-	TypedDocumentString,
-} from "./helpers";
+import { DocumentTypeDecoration } from "@graphql-typed-document-node/core";
+import type { GqlResponse, NextFetchRequestConfig } from "./helpers";
 import {
 	createErrorPrefix,
 	createSha256,
 	defaultHeaders,
 	extractOperationName,
+	getQueryHash,
 	pruneObject,
 } from "./helpers";
 
@@ -18,7 +16,7 @@ export const initServerFetcher =
 	 * @see https://www.apollographql.com/docs/react/api/link/persisted-queries/#protocol
 	 */
 	async <TResponse, TVariables>(
-		astNode: TypedDocumentString<TResponse, TVariables>,
+		astNode: DocumentTypeDecoration<TResponse, TVariables>,
 		variables: TVariables,
 		preview = false, // Preview mode disables all caching, used for previewing draft content
 		next: NextFetchRequestConfig = {}
@@ -46,8 +44,7 @@ export const initServerFetcher =
 		const extensions = {
 			persistedQuery: {
 				version: 1,
-				sha256Hash:
-					astNode?.["__meta__"]?.["hash"] ?? (await createSha256(query)),
+				sha256Hash: getQueryHash(astNode) ?? (await createSha256(query)),
 			},
 		};
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { TypedDocumentString, pruneObject } from "./helpers";
 import { initServerFetcher } from "./server";
+import { TypedDocumentString } from "./testing";
 
 const query = new TypedDocumentString(`
 	query myQuery {

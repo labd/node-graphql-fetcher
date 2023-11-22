@@ -9,7 +9,7 @@ import {
 } from "vitest";
 import createFetchMock from "vitest-fetch-mock";
 import { initClientFetcher } from "./client";
-import { TypedDocumentString } from "./helpers";
+import { TypedDocumentString } from "./testing";
 
 const query = new TypedDocumentString(/* GraphQL */ `
 	query myQuery {
