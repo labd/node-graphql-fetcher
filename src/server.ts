@@ -17,7 +17,7 @@ export const initServerFetcher =
 	async <TResponse, TVariables>(
 		astNode: DocumentTypeDecoration<TResponse, TVariables>,
 		variables: TVariables,
-		cache: RequestCache,
+		cache: RequestCache = 'force-cache',
 		next: NextFetchRequestConfig = {}
 	): Promise<GqlResponse<TResponse>> => {
 		const query = astNode.toString();
