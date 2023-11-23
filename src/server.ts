@@ -8,8 +8,12 @@ import {
 	pruneObject,
 } from "./helpers";
 
+type Options = {
+	disableCache?: boolean;
+};
+
 export const initServerFetcher =
-	(url: string) =>
+	(url: string, options?: Options) =>
 	/**
 	 * Replace full queries with generated ID's to reduce bandwidth.
 	 * @see https://www.apollographql.com/docs/react/api/link/persisted-queries/#protocol
@@ -17,13 +21,21 @@ export const initServerFetcher =
 	async <TResponse, TVariables>(
 		astNode: DocumentTypeDecoration<TResponse, TVariables>,
 		variables: TVariables,
-		cache: RequestCache = 'force-cache',
+		cache: RequestCache = "force-cache",
 		next: NextFetchRequestConfig = {}
 	): Promise<GqlResponse<TResponse>> => {
 		const query = astNode.toString();
 		const operationName = extractOperationName(query);
 
-		// Disable cache when revalidate is not set
+		if (options?.disableCache) {
+			return gqlPost<TResponse>(
+				url,
+				JSON.stringify({ operationName, query, variables }),
+				"no-store",
+				{ ...next, revalidate: 0 }
+			);
+		}
+
 		const extensions = {
 			persistedQuery: {
 				version: 1,

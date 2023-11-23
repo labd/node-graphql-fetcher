@@ -18,9 +18,9 @@ const errorResponse = JSON.stringify({
 });
 
 describe("gqlServerFetch", () => {
-	const gqlServerFetch = initServerFetcher("https://localhost/graphql");
 
 	it("should fetch a persisted query", async () => {
+		const gqlServerFetch = initServerFetcher("https://localhost/graphql");
 		const mockedFetch = fetchMock.mockResponse(successResponse);
 		const gqlResponse = await gqlServerFetch(
 			query,
@@ -55,6 +55,7 @@ describe("gqlServerFetch", () => {
 	});
 
 	it("should persist the query if it wasn't persisted yet", async () => {
+		const gqlServerFetch = initServerFetcher("https://localhost/graphql");
 		// Mock server saying: 'PersistedQueryNotFound'
 		const mockedFetch = fetchMock
 			.mockResponseOnce(errorResponse)
@@ -96,6 +97,7 @@ describe("gqlServerFetch", () => {
 		);
 	});
 	it("should fetch a persisted query without revalidate", async () => {
+		const gqlServerFetch = initServerFetcher("https://localhost/graphql");
 		const mockedFetch = fetchMock.mockResponse(successResponse);
 		const gqlResponse = await gqlServerFetch(
 			query,
@@ -127,5 +129,39 @@ describe("gqlServerFetch", () => {
 		);
 	});
 
+	it("should disable cache when disableCache is set", async () => {
+		const gqlServerFetch = initServerFetcher("https://localhost/graphql", {
+			disableCache: true,
+		});
+		const mockedFetch = fetchMock.mockResponse(successResponse);
+		const gqlResponse = await gqlServerFetch(
+			query,
+			{ myVar: "baz" },
+
+			// These don't have impact due to disableCache
+			"force-cache",
+			{ revalidate: 900 }
+		);
+
+
+		expect(gqlResponse).toEqual(response);
+		expect(mockedFetch).toHaveBeenCalledTimes(1);
+		expect(mockedFetch).toHaveBeenCalledWith(
+			"https://localhost/graphql",
+			{
+				method: "POST", // <- Note that when persisting the query, the method is 'POST'
+				body: JSON.stringify({
+					operationName: "myQuery",
+					query: query.toString(),
+					variables: { myVar: "baz" }
+				}),
+				headers: {
+					"Content-Type": "application/json",
+				},
+				cache: 'no-store',
+				next: { revalidate: 0 },
+			}
+		);
+	});
 
 });
