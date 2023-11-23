@@ -1,5 +1,11 @@
 # @labdigital/react-query-opal
 
+## 0.1.1
+
+### Patch Changes
+
+- de89891: Make cache parameter optional for server client
+
 ## 0.1.0
 
 ### Minor Changes
