@@ -1,5 +1,11 @@
 # @labdigital/react-query-opal
 
+## 0.1.2
+
+### Patch Changes
+
+- 46e0779: Add option to disable cache in server fetcher. This can be set when NODE_ENV === development
+
 ## 0.1.1
 
 ### Patch Changes
