@@ -1,5 +1,16 @@
 # @labdigital/react-query-opal
 
+## 0.2.0
+
+### Minor Changes
+
+- 171ad72: Fix APQ and only use it for queries (not mutations)
+- 1ac8ef4: Rename package to @labdigital/graphql-fetcher
+
+### Patch Changes
+
+- b59f448: Export the ClientFetcher type
+
 ## 0.1.2
 
 ### Patch Changes
