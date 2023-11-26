@@ -1,6 +1,6 @@
 {
 	"name": "@labdigital/graphql-fetcher",
-	"version": "0.1.2",
+	"version": "0.2.0",
 	"description": "Custom fetcher for react-query to use with @labdigital/node-federated-token",
 	"main": "./dist/index.cjs",
 	"module": "./dist/index.js",
