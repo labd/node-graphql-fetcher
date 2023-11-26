@@ -5,6 +5,7 @@ import {
 	defaultHeaders,
 	extractOperationName,
 	getQueryHash,
+	getQueryType,
 	handleResponse,
 	hasPersistedQueryError,
 } from "./helpers";
@@ -39,6 +40,7 @@ export const initClientFetcher =
 		variables?: TVariables
 	): Promise<GqlResponse<TResponse>> => {
 		const query = astNode.toString();
+
 		const operationName = extractOperationName(query);
 
 		let hash = "";
@@ -59,12 +61,18 @@ export const initClientFetcher =
 			await beforeRequest();
 		}
 
-		if (persisted) {
-			// Do persisted query
-			const response = await fetch(`${endpoint}?op=${operationName}`, {
+		const url = new URL(endpoint);
+		url.searchParams.set("op", operationName ?? "");
+
+		// For queries we can use GET requests if APQ is enabled
+		if (persisted && getQueryType(query) === "query") {
+			url.searchParams.set("extensions", JSON.stringify(extensions));
+			if (variables) {
+				url.searchParams.set("variables", JSON.stringify(variables));
+			}
+			const response = await fetch(url.toString(), {
 				headers: defaultHeaders,
 				method: "GET",
-				body: JSON.stringify({ variables, extensions }),
 				credentials: "include",
 			});
 
@@ -76,7 +84,7 @@ export const initClientFetcher =
 			}
 		}
 
-		const response = await fetch(`${endpoint}?op=${operationName}`, {
+		const response = await fetch(url.toString(), {
 			headers: defaultHeaders,
 			method: "POST",
 			body: JSON.stringify({ query, variables, extensions }),
