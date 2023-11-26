@@ -1,4 +1,5 @@
-# react-query-opal
+# @labdigital/graphql-fetcher
+<a href="https://npm.im/@labdigital/graphql-fetcher"><img src="https://badgen.net/npm/v/@labdigital/graphql-fetcher"></a> <a href="https://npm.im/@labdigital/graphql-fetcher">
 
 Opinionated `fetch` wrappers for our client and server side queries in our Next.js frontends.
 Only used for fetching from GraphQL endpoints.
@@ -10,7 +11,6 @@ Only used for fetching from GraphQL endpoints.
 - Fallback when persisted query fails
 - Client fetcher with React context support when the endpoint is only known at runtime
 - Next data cache support
-- Preview mode support to disable all caches
 
 ## Notes
 
