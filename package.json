@@ -1,5 +1,5 @@
 {
-	"name": "@labdigital/react-query-opal",
+	"name": "@labdigital/graphql-fetcher",
 	"version": "0.1.2",
 	"description": "Custom fetcher for react-query to use with @labdigital/node-federated-token",
 	"main": "./dist/index.cjs",
@@ -26,7 +26,7 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/labd/react-query-opal"
+		"url": "https://github.com/labd/node-graphql-fetcher"
 	},
 	"publishConfig": {
 		"access": "public"
