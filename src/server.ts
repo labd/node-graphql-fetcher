@@ -1,5 +1,6 @@
 import { DocumentTypeDecoration } from "@graphql-typed-document-node/core";
 import type { GqlResponse, NextFetchRequestConfig } from "./helpers";
+import { trace } from "@opentelemetry/api";
 import {
 	createSha256,
 	defaultHeaders,
@@ -11,6 +12,9 @@ import {
 type Options = {
 	disableCache?: boolean;
 };
+
+// TODO: make version dynamic, or part of the release process
+const tracer = trace.getTracer("@labdigital/graphql-fetcher", "0.3.0");
 
 export const initServerFetcher =
 	(url: string, options?: Options) =>
@@ -25,14 +29,18 @@ export const initServerFetcher =
 		next: NextFetchRequestConfig = {}
 	): Promise<GqlResponse<TResponse>> => {
 		const query = astNode.toString();
-		const operationName = extractOperationName(query);
+		const operationName = extractOperationName(query) || "(GraphQL)";
 
 		if (options?.disableCache) {
-			return gqlPost<TResponse>(
-				url,
-				JSON.stringify({ operationName, query, variables }),
-				"no-store",
-				{ ...next, revalidate: 0 }
+			return tracer.startActiveSpan(operationName, async (span) =>
+				gqlPost<TResponse>(
+					url,
+					JSON.stringify({ operationName, query, variables }),
+					"no-store",
+					{ ...next, revalidate: 0 }
+				).finally(() => {
+					span.end();
+				})
 			);
 		}
 
@@ -44,24 +52,29 @@ export const initServerFetcher =
 		};
 
 		// Otherwise, try to get the cached query
-		const response = await gqlPersistedQuery<TResponse>(
-			url,
-			getQueryString(operationName, variables, extensions),
-			cache,
-			next
+		return tracer.startActiveSpan(operationName, async (span) =>
+			gqlPersistedQuery<TResponse>(
+					url,
+					getQueryString(operationName, variables, extensions),
+					cache,
+					next
+				)
+					.then((response) => {
+						// If it doesn't exist, do a POST request anyway and cache it.
+						if (response.errors?.[0]?.message === "PersistedQueryNotFound") {
+							return gqlPost<TResponse>(
+								url,
+								JSON.stringify({ operationName, query, variables, extensions }),
+								cache,
+								next
+							);
+						}
+						return response;
+					})
+					.finally(() => {
+						span.end();
+					})
 		);
-
-		// If it doesn't exist, do a POST request anyway and cache it.
-		if (response.errors?.[0]?.message === "PersistedQueryNotFound") {
-			return gqlPost<TResponse>(
-				url,
-				JSON.stringify({ operationName, query, variables, extensions }),
-				cache,
-				next
-			);
-		}
-
-		return response;
 	};
 
 const gqlPost = <T>(
