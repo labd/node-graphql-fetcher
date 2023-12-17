@@ -1,5 +1,11 @@
 # @labdigital/react-query-opal
 
+## 0.3.0
+
+### Minor Changes
+
+- 5090d2a: Add opentelemetry support for server fetcher
+
 ## 0.2.0
 
 ### Minor Changes
