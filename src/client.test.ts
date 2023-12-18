@@ -74,4 +74,19 @@ describe("gqlClientFetch", () => {
 			expect.anything() // <- body, method, headers, etc, are tested in the above
 		);
 	});
+
+	it("should use custom response handler", async () => {
+		const customerFetcher = initClientFetcher("https://localhost/graphql", {
+			handleResponse: async (response) => ({
+				customHandler: true,
+				body: await response.json(),
+			}),
+		});
+
+		fetchMock.mockResponse(responseString);
+		const gqlResponse = await customerFetcher(mutation, {
+			myVar: "baz",
+		});
+		expect(gqlResponse).toEqual({ body: response, customHandler: true });
+	});
 });
