@@ -56,7 +56,7 @@ export const createSha256 = async (message: string) => {
 };
 
 /**
- * Helper function that parses the response body and returns the data or throws an error
+ * Helper function that parses the response body and returns the data or throws an error.
  * @param response Fetch response object
  * @returns GraphQL response body
  */
@@ -69,10 +69,6 @@ export const handleResponse = async (response: Response) => {
 	const body = await response
 		.json()
 		.catch((err) => invariant(false, "Could not parse JSON from response"));
-
-	// Check for GraphQL errors
-	const hasNoErrors = !(body.errors?.length && body.errors.length > 0);
-	invariant(hasNoErrors, JSON.stringify(body.errors, null, 2));
 
 	return body;
 };

@@ -6,17 +6,15 @@ import {
 	extractOperationName,
 	getQueryHash,
 	getQueryType,
-	handleResponse as defaultHandleResponse,
+	handleResponse,
 	hasPersistedQueryError,
 } from "./helpers";
 
 type beforeRequestFn = () => Promise<void>;
-type handleResponseFn = (response: Response) => Promise<any>;
 
 type Options = {
 	beforeRequest?: beforeRequestFn;
 	persisted?: boolean;
-	handleResponse?: handleResponseFn;
 };
 
 export type ClientFetcher = <TResponse, TVariables>(
@@ -27,7 +25,7 @@ export type ClientFetcher = <TResponse, TVariables>(
 export const initClientFetcher =
 	(
 		endpoint: string,
-		{ beforeRequest, persisted, handleResponse }: Options = {}
+		{ beforeRequest, persisted }: Options = {}
 	): ClientFetcher =>
 	/**
 	 * Executes a GraphQL query post request on the client.
@@ -82,7 +80,7 @@ export const initClientFetcher =
 			const hasError = await hasPersistedQueryError(response);
 
 			if (!hasError) {
-				return responseHandler(response, handleResponse);
+				return handleResponse(response);
 			}
 		}
 
@@ -93,15 +91,5 @@ export const initClientFetcher =
 			credentials: "include",
 		});
 
-		return responseHandler(response, handleResponse);
-	};
-
-const responseHandler = (
-	response: Response,
-	handleResponse?: handleResponseFn
-) => {
-	if (handleResponse) {
 		return handleResponse(response);
-	}
-	return defaultHandleResponse(response);
-};
+	};
