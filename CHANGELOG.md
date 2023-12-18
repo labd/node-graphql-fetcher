@@ -1,5 +1,11 @@
 # @labdigital/react-query-opal
 
+## 0.3.1
+
+### Patch Changes
+
+- f4c2e08: Don't handle graphql errors
+
 ## 0.3.0
 
 ### Minor Changes
