@@ -1,4 +1,5 @@
 import { DocumentTypeDecoration } from "@graphql-typed-document-node/core";
+import invariant from "tiny-invariant";
 import type { GqlResponse } from "./helpers";
 import {
 	createSha256,
@@ -6,14 +7,13 @@ import {
 	extractOperationName,
 	getQueryHash,
 	getQueryType,
-	handleResponse,
 	hasPersistedQueryError,
 } from "./helpers";
 
-type beforeRequestFn = () => Promise<void>;
+type RequestEventFn = () => Promise<void>;
 
 type Options = {
-	beforeRequest?: beforeRequestFn;
+	onBeforeRequest?: RequestEventFn;
 	persisted?: boolean;
 };
 
@@ -25,7 +25,7 @@ export type ClientFetcher = <TResponse, TVariables>(
 export const initClientFetcher =
 	(
 		endpoint: string,
-		{ beforeRequest, persisted }: Options = {}
+		{ onBeforeRequest, persisted }: Options = {}
 	): ClientFetcher =>
 	/**
 	 * Executes a GraphQL query post request on the client.
@@ -56,9 +56,9 @@ export const initClientFetcher =
 			};
 		}
 
-		// Run before hooks
-		if (beforeRequest) {
-			await beforeRequest();
+		// TODO: Not sure if we want this single event function if it can also be run before running the fetcher
+		if (onBeforeRequest) {
+			await onBeforeRequest();
 		}
 
 		const url = new URL(endpoint);
@@ -76,14 +76,13 @@ export const initClientFetcher =
 				credentials: "include",
 			});
 
-			// Only handleResponse and return if the server can handle the APQ
-			const hasError = await hasPersistedQueryError(response);
-
-			if (!hasError) {
+			// Only handleResponse and return if the server can handle the persisted query
+			if (!(await hasPersistedQueryError(response))) {
 				return handleResponse(response);
 			}
 		}
 
+		// Fallback to post request
 		const response = await fetch(url.toString(), {
 			headers: defaultHeaders,
 			method: "POST",
@@ -93,3 +92,23 @@ export const initClientFetcher =
 
 		return handleResponse(response);
 	};
+
+/**
+ * Checks if fetch succeeded and body is JSON-parseable, otherwise throws an error.
+ *
+ * Any additional checks (GraphQL errors, etc.) should be done in the calling function
+ * @param response Fetch response object
+ * @returns GraphQL response body
+ */
+const handleResponse = async (response: Response) => {
+	invariant(
+		response.ok,
+		`Response not ok: ${response.status} ${response.statusText}`
+	);
+
+	const body = await response
+		.json()
+		.catch((err) => invariant(false, "Could not parse JSON from response"));
+
+	return body;
+};

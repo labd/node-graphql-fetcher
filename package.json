@@ -32,7 +32,7 @@
 		"access": "public"
 	},
 	"scripts": {
-		"build": "tsup",
+		"build": "tsup --env.PACKAGE_VERSION $(jq -r '.version' package.json)",
 		"publish:ci": "pnpm build && pnpm changeset publish",
 		"test": "vitest run",
 		"test:ci": "vitest run --coverage",

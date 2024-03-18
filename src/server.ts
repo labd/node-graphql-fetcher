@@ -1,49 +1,84 @@
 import { DocumentTypeDecoration } from "@graphql-typed-document-node/core";
-import type { GqlResponse, NextFetchRequestConfig } from "./helpers";
 import { trace } from "@opentelemetry/api";
+import invariant from "tiny-invariant";
+import type { GqlResponse, NextFetchRequestConfig } from "./helpers";
 import {
 	createSha256,
 	defaultHeaders,
+	errorMessage,
 	extractOperationName,
 	getQueryHash,
 	pruneObject,
 } from "./helpers";
 
 type Options = {
-	disableCache?: boolean;
+	/**
+	 * Disables all forms of caching for the fetcher, use only in development
+	 *
+	 * @default false
+	 */
+	dangerouslyDisableCache?: boolean;
+	/**
+	 * Error policy for the fetcher, will either throw an error if the body contains GraphQL errors
+	 * or allow the body to be returned with the errors.
+	 * - "none" will always throw an error if fetching fails or the body contains GraphQL errors
+	 * - "allow-body" will return the body even if it contains GraphQL errors,
+	 * you can then handle it in your application logic
+	 *
+	 * @default "none"
+	 */
+	errorPolicy?: "none" | "allow-body";
 };
 
-// TODO: make version dynamic, or part of the release process
-const tracer = trace.getTracer("@labdigital/graphql-fetcher", "0.3.0");
+type CacheOptions = {
+	cache?: RequestCache;
+	next?: NextFetchRequestConfig;
+};
+
+const tracer = trace.getTracer(
+	"@labdigital/graphql-fetcher",
+	process.env.PACKAGE_VERSION
+);
 
 export const initServerFetcher =
-	(url: string, options?: Options) =>
-	/**
-	 * Replace full queries with generated ID's to reduce bandwidth.
-	 * @see https://www.apollographql.com/docs/react/api/link/persisted-queries/#protocol
-	 */
+	(
+		url: string,
+		{ dangerouslyDisableCache = false, errorPolicy = "none" }: Options
+	) =>
 	async <TResponse, TVariables>(
 		astNode: DocumentTypeDecoration<TResponse, TVariables>,
 		variables: TVariables,
-		cache: RequestCache = "force-cache",
-		next: NextFetchRequestConfig = {}
+		{ cache = "force-cache", next = {} }: CacheOptions
 	): Promise<GqlResponse<TResponse>> => {
 		const query = astNode.toString();
 		const operationName = extractOperationName(query) || "(GraphQL)";
 
-		if (options?.disableCache) {
-			return tracer.startActiveSpan(operationName, async (span) =>
-				gqlPost<TResponse>(
+		if (dangerouslyDisableCache) {
+			// If we force the cache field we shouldn't set revalidate at all, it will throw a warning otherwise
+			delete next.revalidate;
+
+			return tracer.startActiveSpan(operationName, async (span) => {
+				const response = await gqlPost<TResponse>(
 					url,
 					JSON.stringify({ operationName, query, variables }),
-					"no-store",
-					{ ...next, revalidate: 0 }
-				).finally(() => {
-					span.end();
-				})
-			);
+					{ ...next, cache: "no-store" }
+				);
+
+				if (errorPolicy === "none") {
+					if (response.errors) {
+						throw new Error(errorMessage(`GraphQL errors: ${response.errors}`));
+					}
+				}
+
+				span.end();
+				return response;
+			});
 		}
 
+		/**
+		 * Replace full queries with generated ID's to reduce bandwidth.
+		 * @see https://www.apollographql.com/docs/react/api/link/persisted-queries/#protocol
+		 */
 		const extensions = {
 			persistedQuery: {
 				version: 1,
@@ -52,68 +87,63 @@ export const initServerFetcher =
 		};
 
 		// Otherwise, try to get the cached query
-		return tracer.startActiveSpan(operationName, async (span) =>
-			gqlPersistedQuery<TResponse>(
+		return tracer.startActiveSpan(operationName, async (span) => {
+			let response = await gqlPersistedQuery<TResponse>(
+				url,
+				getQueryString(operationName, variables, extensions),
+				{ cache, next }
+			);
+
+			if (response.errors?.[0]?.message === "PersistedQueryNotFound") {
+				// If the cached query doesn't exist, fall back to POST request and let the server cache it.
+				response = await gqlPost<TResponse>(
 					url,
-					getQueryString(operationName, variables, extensions),
-					cache,
-					next
-				)
-					.then((response) => {
-						// If it doesn't exist, do a POST request anyway and cache it.
-						if (response.errors?.[0]?.message === "PersistedQueryNotFound") {
-							return gqlPost<TResponse>(
-								url,
-								JSON.stringify({ operationName, query, variables, extensions }),
-								cache,
-								next
-							);
-						}
-						return response;
-					})
-					.finally(() => {
-						span.end();
-					})
-		);
+					JSON.stringify({ operationName, query, variables, extensions }),
+					{ cache, next }
+				);
+			}
+
+			if (errorPolicy === "none") {
+				if (response.errors) {
+					throw new Error(errorMessage(`GraphQL errors: ${response.errors}`));
+				}
+			}
+
+			span.end();
+			return response;
+		});
 	};
 
-const gqlPost = <T>(
+const gqlPost = async <T>(
 	url: string,
 	body: string,
-	cache: RequestCache,
-	next?: NextFetchRequestConfig
-) =>
-	fetch(url, {
+	{ cache, next }: CacheOptions
+) => {
+	const response = await fetch(url, {
 		headers: defaultHeaders,
 		method: "POST",
 		body,
 		cache,
-		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-		// @ts-ignore
 		next,
-	})
-		.then<GqlResponse<T>>((response) => response.json())
-		.then((response) => {
-			if (response.errors?.length) {
-				throw new Error(JSON.stringify(response.errors, null, 2));
-			}
-			return response;
-		});
+	});
 
-const gqlPersistedQuery = <T>(
+	return handleResponse<T>(response);
+};
+
+const gqlPersistedQuery = async <T>(
 	url: string,
 	queryString: URLSearchParams,
-	cache: RequestCache,
-	next?: NextFetchRequestConfig
-) =>
-	fetch(`${url}?${queryString}`, {
+	{ cache, next }: CacheOptions
+) => {
+	const response = await fetch(`${url}?${queryString}`, {
 		method: "GET",
 		headers: defaultHeaders,
 		cache,
-		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-		// @ts-ignore
 		next,
-	}).then<GqlResponse<T>>((response) => response.json());
+	});
+
+	return handleResponse<T>(response);
+};
 
 const getQueryString = <TVariables>(
 	operationName: string | undefined,
@@ -127,3 +157,20 @@ const getQueryString = <TVariables>(
 			extensions: JSON.stringify(extensions),
 		})
 	);
+
+/**
+ * Checks if fetch succeeded, otherwise throws an error.
+ *
+ * Any additional checks (GraphQL errors, etc.) should be done in the calling function
+ * @param response Fetch response object
+ * @returns GraphQL response body
+ */
+const handleResponse = async <T>(response: Response) => {
+	invariant(
+		response.ok,
+		errorMessage(`Response not ok: ${response.status} ${response.statusText}`)
+	);
+
+	// Let fetch throw if the body is not JSON-parseable
+	return (await response.json()) as GqlResponse<T>;
+};

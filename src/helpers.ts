@@ -1,5 +1,4 @@
 import { DocumentTypeDecoration } from "@graphql-typed-document-node/core";
-import invariant from "tiny-invariant";
 
 export const extractOperationName = (query: string) => {
 	const matches = query.match(/(query|mutation)\s(\w+)/);
@@ -56,24 +55,6 @@ export const createSha256 = async (message: string) => {
 };
 
 /**
- * Helper function that parses the response body and returns the data or throws an error.
- * @param response Fetch response object
- * @returns GraphQL response body
- */
-export const handleResponse = async (response: Response) => {
-	invariant(
-		response.ok,
-		`Response not ok: ${response.status} ${response.statusText}`
-	);
-
-	const body = await response
-		.json()
-		.catch((err) => invariant(false, "Could not parse JSON from response"));
-
-	return body;
-};
-
-/**
  * Check if the response has a PersistedQueryNotFound error.
  * @param response Fetch response object
  */
@@ -90,3 +71,5 @@ export const hasPersistedQueryError = async <T>(response: Response) => {
 		return false;
 	}
 };
+
+export const errorMessage = (message: string) => `graphql-fetcher: ${message}`;
