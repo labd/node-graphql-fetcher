@@ -58,7 +58,7 @@ export const initServerFetcher =
 			delete next.revalidate;
 
 			return tracer.startActiveSpan(operationName, async (span) => {
-				const response = await gqlPost<TResponse>(
+				const response = await gqlPost(
 					url,
 					JSON.stringify({ operationName, query, variables }),
 					{ ...next, cache: "no-store" }
@@ -71,7 +71,7 @@ export const initServerFetcher =
 				}
 
 				span.end();
-				return response;
+				return response as GqlResponse<TResponse>;
 			});
 		}
 
@@ -88,7 +88,7 @@ export const initServerFetcher =
 
 		// Otherwise, try to get the cached query
 		return tracer.startActiveSpan(operationName, async (span) => {
-			let response = await gqlPersistedQuery<TResponse>(
+			let response = await gqlPersistedQuery(
 				url,
 				getQueryString(operationName, variables, extensions),
 				{ cache, next }
@@ -96,7 +96,7 @@ export const initServerFetcher =
 
 			if (response.errors?.[0]?.message === "PersistedQueryNotFound") {
 				// If the cached query doesn't exist, fall back to POST request and let the server cache it.
-				response = await gqlPost<TResponse>(
+				response = await gqlPost(
 					url,
 					JSON.stringify({ operationName, query, variables, extensions }),
 					{ cache, next }
@@ -110,11 +110,11 @@ export const initServerFetcher =
 			}
 
 			span.end();
-			return response;
+			return response as GqlResponse<TResponse>;
 		});
 	};
 
-const gqlPost = async <T>(
+const gqlPost = async (
 	url: string,
 	body: string,
 	{ cache, next }: CacheOptions
@@ -127,10 +127,10 @@ const gqlPost = async <T>(
 		next,
 	});
 
-	return handleResponse<T>(response);
+	return handleResponse(response);
 };
 
-const gqlPersistedQuery = async <T>(
+const gqlPersistedQuery = async (
 	url: string,
 	queryString: URLSearchParams,
 	{ cache, next }: CacheOptions
@@ -142,7 +142,7 @@ const gqlPersistedQuery = async <T>(
 		next,
 	});
 
-	return handleResponse<T>(response);
+	return handleResponse(response);
 };
 
 const getQueryString = <TVariables>(
@@ -165,12 +165,12 @@ const getQueryString = <TVariables>(
  * @param response Fetch response object
  * @returns GraphQL response body
  */
-const handleResponse = async <T>(response: Response) => {
+const handleResponse = async (response: Response) => {
 	invariant(
 		response.ok,
 		errorMessage(`Response not ok: ${response.status} ${response.statusText}`)
 	);
 
 	// Let fetch throw if the body is not JSON-parseable
-	return (await response.json()) as GqlResponse<T>;
+	return await response.json();
 };

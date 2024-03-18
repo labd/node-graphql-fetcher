@@ -4,6 +4,7 @@ import type { GqlResponse } from "./helpers";
 import {
 	createSha256,
 	defaultHeaders,
+	errorMessage,
 	extractOperationName,
 	getQueryHash,
 	getQueryType,
@@ -33,7 +34,6 @@ export const initClientFetcher =
 	 * This is the only fetcher that uses user information in the call since all user information is only
 	 * used after rendering the page for caching reasons.
 	 *
-	 * There is no APQ being used since these queries often contain user information.
 	 */
 	async <TResponse, TVariables>(
 		astNode: DocumentTypeDecoration<TResponse, TVariables>,
@@ -64,51 +64,35 @@ export const initClientFetcher =
 		const url = new URL(endpoint);
 		url.searchParams.set("op", operationName ?? "");
 
-		// For queries we can use GET requests if APQ is enabled
+		let response: Response | undefined = undefined;
+
+		// For queries we can use GET requests if persisted queries are enabled
 		if (persisted && getQueryType(query) === "query") {
 			url.searchParams.set("extensions", JSON.stringify(extensions));
 			if (variables) {
 				url.searchParams.set("variables", JSON.stringify(variables));
 			}
-			const response = await fetch(url.toString(), {
+			response = await fetch(url.toString(), {
 				headers: defaultHeaders,
 				method: "GET",
 				credentials: "include",
 			});
-
-			// Only handleResponse and return if the server can handle the persisted query
-			if (!(await hasPersistedQueryError(response))) {
-				return handleResponse(response);
-			}
 		}
 
-		// Fallback to post request
-		const response = await fetch(url.toString(), {
-			headers: defaultHeaders,
-			method: "POST",
-			body: JSON.stringify({ query, variables, extensions }),
-			credentials: "include",
-		});
+		if (!response || (await hasPersistedQueryError(response))) {
+			// Persisted query not used or found, fall back to POST request and include extension to cache the query on the server
+			response = await fetch(url.toString(), {
+				headers: defaultHeaders,
+				method: "POST",
+				body: JSON.stringify({ query, variables, extensions }),
+				credentials: "include",
+			});
+		}
 
-		return handleResponse(response);
+		invariant(
+			response.ok,
+			errorMessage(`Response not ok: ${response.status} ${response.statusText}`)
+		);
+
+		return (await response.json()) as GqlResponse<TResponse>;
 	};
-
-/**
- * Checks if fetch succeeded and body is JSON-parseable, otherwise throws an error.
- *
- * Any additional checks (GraphQL errors, etc.) should be done in the calling function
- * @param response Fetch response object
- * @returns GraphQL response body
- */
-const handleResponse = async (response: Response) => {
-	invariant(
-		response.ok,
-		`Response not ok: ${response.status} ${response.statusText}`
-	);
-
-	const body = await response
-		.json()
-		.catch((err) => invariant(false, "Could not parse JSON from response"));
-
-	return body;
-};
