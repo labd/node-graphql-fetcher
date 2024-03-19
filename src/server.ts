@@ -18,16 +18,6 @@ type Options = {
 	 * @default false
 	 */
 	dangerouslyDisableCache?: boolean;
-	/**
-	 * Error policy for the fetcher, will either throw an error if the body contains GraphQL errors
-	 * or allow the body to be returned with the errors.
-	 * - "none" will always throw an error if fetching fails or the body contains GraphQL errors
-	 * - "allow-body" will return the body even if it contains GraphQL errors,
-	 * you can then handle it in your application logic
-	 *
-	 * @default "none"
-	 */
-	errorPolicy?: "none" | "allow-body";
 };
 
 type CacheOptions = {
@@ -41,10 +31,7 @@ const tracer = trace.getTracer(
 );
 
 export const initServerFetcher =
-	(
-		url: string,
-		{ dangerouslyDisableCache = false, errorPolicy = "none" }: Options
-	) =>
+	(url: string, { dangerouslyDisableCache = false }: Options) =>
 	async <TResponse, TVariables>(
 		astNode: DocumentTypeDecoration<TResponse, TVariables>,
 		variables: TVariables,
@@ -63,12 +50,6 @@ export const initServerFetcher =
 					JSON.stringify({ operationName, query, variables }),
 					{ ...next, cache: "no-store" }
 				);
-
-				if (errorPolicy === "none") {
-					if (response.errors) {
-						throw new Error(errorMessage(`GraphQL errors: ${response.errors}`));
-					}
-				}
 
 				span.end();
 				return response as GqlResponse<TResponse>;
@@ -103,12 +84,6 @@ export const initServerFetcher =
 				);
 			}
 
-			if (errorPolicy === "none") {
-				if (response.errors) {
-					throw new Error(errorMessage(`GraphQL errors: ${response.errors}`));
-				}
-			}
-
 			span.end();
 			return response as GqlResponse<TResponse>;
 		});
@@ -127,7 +102,7 @@ const gqlPost = async (
 		next,
 	});
 
-	return handleResponse(response);
+	return parseResponse(response);
 };
 
 const gqlPersistedQuery = async (
@@ -142,7 +117,7 @@ const gqlPersistedQuery = async (
 		next,
 	});
 
-	return handleResponse(response);
+	return parseResponse(response);
 };
 
 const getQueryString = <TVariables>(
@@ -159,18 +134,16 @@ const getQueryString = <TVariables>(
 	);
 
 /**
- * Checks if fetch succeeded, otherwise throws an error.
- *
- * Any additional checks (GraphQL errors, etc.) should be done in the calling function
+ * Checks if fetch succeeded and parses the response body
  * @param response Fetch response object
  * @returns GraphQL response body
  */
-const handleResponse = async (response: Response) => {
+const parseResponse = async (response: Response) => {
 	invariant(
 		response.ok,
 		errorMessage(`Response not ok: ${response.status} ${response.statusText}`)
 	);
 
 	// Let fetch throw if the body is not JSON-parseable
-	return await response.json();
+	return response.json();
 };
