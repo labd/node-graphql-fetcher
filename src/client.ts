@@ -14,8 +14,15 @@ import {
 type RequestEventFn = () => Promise<void>;
 
 type Options = {
+	/**
+	 * Function that runs before a request is being made, useful for tracking or refreshing tokens
+	 */
 	onBeforeRequest?: RequestEventFn;
-	persisted?: boolean;
+	/**
+	 * Enable use of persisted queries, this will always add a extra roundtrip to the server if queries aren't cacheable
+	 * @default false
+	 */
+	persistedQueries?: boolean;
 };
 
 export type ClientFetcher = <TResponse, TVariables>(
@@ -26,14 +33,13 @@ export type ClientFetcher = <TResponse, TVariables>(
 export const initClientFetcher =
 	(
 		endpoint: string,
-		{ onBeforeRequest, persisted }: Options = {}
+		{ onBeforeRequest, persistedQueries = false }: Options = {}
 	): ClientFetcher =>
 	/**
 	 * Executes a GraphQL query post request on the client.
 	 *
 	 * This is the only fetcher that uses user information in the call since all user information is only
 	 * used after rendering the page for caching reasons.
-	 *
 	 */
 	async <TResponse, TVariables>(
 		astNode: DocumentTypeDecoration<TResponse, TVariables>,
@@ -45,7 +51,7 @@ export const initClientFetcher =
 
 		let hash = "";
 		let extensions = {};
-		if (persisted) {
+		if (persistedQueries) {
 			hash = getQueryHash(astNode) ?? (await createSha256(query));
 
 			extensions = {
@@ -67,7 +73,7 @@ export const initClientFetcher =
 		let response: Response | undefined = undefined;
 
 		// For queries we can use GET requests if persisted queries are enabled
-		if (persisted && getQueryType(query) === "query") {
+		if (persistedQueries && getQueryType(query) === "query") {
 			url.searchParams.set("extensions", JSON.stringify(extensions));
 			if (variables) {
 				url.searchParams.set("variables", JSON.stringify(variables));
@@ -79,6 +85,7 @@ export const initClientFetcher =
 			});
 		}
 
+		// TODO: Optimise this flow as you always parse the response twice now when persisted queries are enabled
 		if (!response || (await hasPersistedQueryError(response))) {
 			// Persisted query not used or found, fall back to POST request and include extension to cache the query on the server
 			response = await fetch(url.toString(), {
