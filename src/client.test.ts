@@ -121,10 +121,25 @@ describe("gqlClientFetch", () => {
 		// Should do two calls, a GET and a POST request
 		expect(mockedFetch).toHaveBeenCalledTimes(2);
 	});
+	// This seems as if we test fetch itself but we're actually testing whether the fetcher properly propagates the fetch errors to the package consumers
 	it("should throw when JSON can't be parsed", () => {
 		fetchMock.mockResponse("<p>Not JSON</p>");
 
 		const gqlResponse = fetcher(query, { myVar: "baz" });
+
+		expect(gqlResponse).rejects.toThrow();
+	});
+	it("should not fallback to POST if the persisted query cannot be parsed", async () => {
+		fetchMock.mockResponse("<p>Not JSON</p>");
+
+		const gqlResponse = persistedFetcher(query, { myVar: "baz" });
+
+		expect(gqlResponse).rejects.toThrow();
+	});
+	it("should not fallback to POST if the persisted query returns an error from the server", async () => {
+		fetchMock.mockReject(new Error("Network error"));
+
+		const gqlResponse = persistedFetcher(query, { myVar: "baz" });
 
 		expect(gqlResponse).rejects.toThrow();
 	});

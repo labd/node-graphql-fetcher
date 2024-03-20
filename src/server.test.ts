@@ -150,4 +150,28 @@ describe("gqlServerFetch", () => {
 			cache: "no-store",
 		});
 	});
+	// This seems as if we test fetch itself but we're actually testing whether the fetcher properly propagates the fetch errors to the package consumers
+	it("should throw when JSON can't be parsed", async () => {
+		const gqlServerFetch = initServerFetcher("https://localhost/graphql");
+		fetchMock.mockResponse("<p>Not JSON</p>");
+
+		await expect(() =>
+			gqlServerFetch(query, { myVar: "baz" }, {})
+		).rejects.toThrow();
+
+		// It should not try to POST the query if the persisted query cannot be parsed
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+	});
+
+	it("should throw when the server response is not ok", async () => {
+		const gqlServerFetch = initServerFetcher("https://localhost/graphql");
+		fetchMock.mockReject(new Error("Network error"));
+
+		await expect(() =>
+			gqlServerFetch(query, { myVar: "baz" }, {})
+		).rejects.toThrow();
+
+		// It should not try to POST the query if the persisted query cannot be parsed
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+	});
 });
