@@ -31,11 +31,11 @@ const tracer = trace.getTracer(
 );
 
 export const initServerFetcher =
-	(url: string, { dangerouslyDisableCache = false }: Options) =>
+	(url: string, { dangerouslyDisableCache = false }: Options = {}) =>
 	async <TResponse, TVariables>(
 		astNode: DocumentTypeDecoration<TResponse, TVariables>,
 		variables: TVariables,
-		{ cache = "force-cache", next = {} }: CacheOptions
+		{ cache = "default", next = {} }: CacheOptions
 	): Promise<GqlResponse<TResponse>> => {
 		const query = astNode.toString();
 		const operationName = extractOperationName(query) || "(GraphQL)";
