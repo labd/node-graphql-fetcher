@@ -1,5 +1,5 @@
 import { DocumentTypeDecoration } from "@graphql-typed-document-node/core";
-import { trace } from "@opentelemetry/api";
+import { SpanStatusCode, trace } from "@opentelemetry/api";
 import invariant from "tiny-invariant";
 import type { GqlResponse, NextFetchRequestConfig } from "./helpers";
 import {
@@ -45,14 +45,22 @@ export const initServerFetcher =
 			delete next.revalidate;
 
 			return tracer.startActiveSpan(operationName, async (span) => {
-				const response = await gqlPost(
-					url,
-					JSON.stringify({ operationName, query, variables }),
-					{ ...next, cache: "no-store" }
-				);
+				try {
+					const response = await gqlPost(
+						url,
+						JSON.stringify({ operationName, query, variables }),
+						{ ...next, cache: "no-store" }
+					);
 
-				span.end();
-				return response as GqlResponse<TResponse>;
+					span.end();
+					return response as GqlResponse<TResponse>;
+				} catch (err: any) {
+					span.setStatus({
+						code: SpanStatusCode.ERROR,
+						message: err?.message ?? String(err),
+					});
+					throw err;
+				}
 			});
 		}
 
@@ -69,23 +77,31 @@ export const initServerFetcher =
 
 		// Otherwise, try to get the cached query
 		return tracer.startActiveSpan(operationName, async (span) => {
-			let response = await gqlPersistedQuery(
-				url,
-				getQueryString(operationName, variables, extensions),
-				{ cache, next }
-			);
-
-			if (response.errors?.[0]?.message === "PersistedQueryNotFound") {
-				// If the cached query doesn't exist, fall back to POST request and let the server cache it.
-				response = await gqlPost(
+			try {
+				let response = await gqlPersistedQuery(
 					url,
-					JSON.stringify({ operationName, query, variables, extensions }),
+					getQueryString(operationName, variables, extensions),
 					{ cache, next }
 				);
-			}
 
-			span.end();
-			return response as GqlResponse<TResponse>;
+				if (response.errors?.[0]?.message === "PersistedQueryNotFound") {
+					// If the cached query doesn't exist, fall back to POST request and let the server cache it.
+					response = await gqlPost(
+						url,
+						JSON.stringify({ operationName, query, variables, extensions }),
+						{ cache, next }
+					);
+				}
+
+				span.end();
+				return response as GqlResponse<TResponse>;
+			} catch (err: any) {
+				span.setStatus({
+					code: SpanStatusCode.ERROR,
+					message: err?.message ?? String(err),
+				});
+				throw err;
+			}
 		});
 	};
 
@@ -144,6 +160,5 @@ const parseResponse = async (response: Response) => {
 		errorMessage(`Response not ok: ${response.status} ${response.statusText}`)
 	);
 
-	// Let fetch throw if the body is not JSON-parseable
-	return response.json();
+	return await response.json();
 };
