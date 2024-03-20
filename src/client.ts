@@ -11,13 +11,7 @@ import {
 	hasPersistedQueryError,
 } from "./helpers";
 
-type RequestEventFn = () => Promise<void>;
-
 type Options = {
-	/**
-	 * Function that runs before a request is being made, useful for tracking or refreshing tokens
-	 */
-	onBeforeRequest?: RequestEventFn;
 	/**
 	 * Enable use of persisted queries, this will always add a extra roundtrip to the server if queries aren't cacheable
 	 * @default false
@@ -33,7 +27,7 @@ export type ClientFetcher = <TResponse, TVariables>(
 export const initClientFetcher =
 	(
 		endpoint: string,
-		{ onBeforeRequest, persistedQueries = false }: Options = {}
+		{ persistedQueries = false }: Options = {}
 	): ClientFetcher =>
 	/**
 	 * Executes a GraphQL query post request on the client.
@@ -60,11 +54,6 @@ export const initClientFetcher =
 					sha256Hash: hash,
 				},
 			};
-		}
-
-		// TODO: Not sure if we want this single event function if it can also be run before running the fetcher
-		if (onBeforeRequest) {
-			await onBeforeRequest();
 		}
 
 		const url = new URL(endpoint);
