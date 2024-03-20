@@ -59,7 +59,7 @@ export const initClientFetcher =
 		const url = new URL(endpoint);
 		url.searchParams.set("op", operationName ?? "");
 
-		let response: Response | undefined = undefined;
+		let response: GqlResponse<TResponse> | undefined = undefined;
 
 		// For queries we can use GET requests if persisted queries are enabled
 		if (persistedQueries && getQueryType(query) === "query") {
@@ -67,28 +67,44 @@ export const initClientFetcher =
 			if (variables) {
 				url.searchParams.set("variables", JSON.stringify(variables));
 			}
-			response = await fetch(url.toString(), {
-				headers: defaultHeaders,
-				method: "GET",
-				credentials: "include",
-			});
+			response = await parseResponse<GqlResponse<TResponse>>(() =>
+				fetch(url.toString(), {
+					headers: defaultHeaders,
+					method: "GET",
+					credentials: "include",
+				})
+			);
 		}
 
 		// TODO: Optimise this flow as you always parse the response twice now when persisted queries are enabled
-		if (!response || (await hasPersistedQueryError(response))) {
+		if (!response || hasPersistedQueryError(response)) {
 			// Persisted query not used or found, fall back to POST request and include extension to cache the query on the server
-			response = await fetch(url.toString(), {
-				headers: defaultHeaders,
-				method: "POST",
-				body: JSON.stringify({ query, variables, extensions }),
-				credentials: "include",
-			});
+			response = await parseResponse<GqlResponse<TResponse>>(() =>
+				fetch(url.toString(), {
+					headers: defaultHeaders,
+					method: "POST",
+					body: JSON.stringify({ query, variables, extensions }),
+					credentials: "include",
+				})
+			);
 		}
 
-		invariant(
-			response.ok,
-			errorMessage(`Response not ok: ${response.status} ${response.statusText}`)
-		);
-
-		return (await response.json()) as GqlResponse<TResponse>;
+		return response;
 	};
+
+/**
+ * Checks if fetch succeeded and parses the response body
+ * @param response Fetch response object
+ * @returns GraphQL response body
+ */
+const parseResponse = async <T>(
+	fetchFn: () => Promise<Response>
+): Promise<T> => {
+	const response = await fetchFn();
+	invariant(
+		response.ok,
+		errorMessage(`Response not ok: ${response.status} ${response.statusText}`)
+	);
+
+	return (await response.json()) as T;
+};

@@ -58,20 +58,11 @@ export const createSha256 = async (message: string) => {
  * Check if the response has a PersistedQueryNotFound error.
  * @param response Fetch response object
  */
-export const hasPersistedQueryError = async <T>(response: Response) => {
-	if (!response.ok) return false;
-
-	try {
-		// Clone response as we can only read the body once, and it will also be read later on in the flow
-		// TODO: Optimise this flow as you always parse the response twice now when persisted queries are enabled
-		const body = (await response.clone().json()) as GqlResponse<T>;
-
-		return Boolean(
-			body?.errors?.find((item) => item.message === "PersistedQueryNotFound")
-		);
-	} catch (err) {
-		return false;
-	}
-};
+export const hasPersistedQueryError = (
+	response: GqlResponse<unknown>
+): boolean =>
+	Boolean(
+		response?.errors?.find((item) => item.message === "PersistedQueryNotFound")
+	);
 
 export const errorMessage = (message: string) => `graphql-fetcher: ${message}`;
