@@ -76,7 +76,6 @@ export const initClientFetcher =
 			);
 		}
 
-		// TODO: Optimise this flow as you always parse the response twice now when persisted queries are enabled
 		if (!response || hasPersistedQueryError(response)) {
 			// Persisted query not used or found, fall back to POST request and include extension to cache the query on the server
 			response = await parseResponse<GqlResponse<TResponse>>(() =>
