@@ -35,7 +35,7 @@ export const initServerFetcher =
 	async <TResponse, TVariables>(
 		astNode: DocumentTypeDecoration<TResponse, TVariables>,
 		variables: TVariables,
-		{ cache = "default", next = {} }: CacheOptions
+		{ cache, next = {} }: CacheOptions
 	): Promise<GqlResponse<TResponse>> => {
 		const query = astNode.toString();
 		const operationName = extractOperationName(query) || "(GraphQL)";

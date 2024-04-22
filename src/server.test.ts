@@ -86,7 +86,6 @@ describe("gqlServerFetch", () => {
 				headers: {
 					"Content-Type": "application/json",
 				},
-				cache: "default",
 				next: { revalidate: 900 },
 			}
 		);
