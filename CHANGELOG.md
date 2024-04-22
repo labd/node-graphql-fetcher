@@ -1,5 +1,11 @@
 # @labdigital/react-query-opal
 
+## 1.0.1
+
+### Patch Changes
+
+- b14681d: add correct cache property
+
 ## 1.0.0
 
 ### Major Changes
