@@ -8,6 +8,7 @@ import {
 	errorMessage,
 	extractOperationName,
 	getQueryHash,
+	getQueryType,
 	pruneObject,
 } from "./helpers";
 
@@ -74,6 +75,30 @@ export const initServerFetcher =
 					throw err;
 				}
 			});
+		}
+
+
+		// Skip persisted queries if operation is a mutation
+		const queryType = getQueryType(query)
+		if (queryType === "mutation") {
+			return tracer.startActiveSpan(operationName, async (span) => {
+				try {
+					const response = await gqlPost(
+						url,
+						JSON.stringify({ operationName, query, variables }),
+						{ cache, next }
+					);
+	
+					span.end();
+					return response as GqlResponse<TResponse>;
+				} catch (err: any) {
+					span.setStatus({
+						code: SpanStatusCode.ERROR,
+						message: err?.message ?? String(err),
+					});
+					throw err;
+				}
+			})
 		}
 
 		/**
