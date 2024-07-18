@@ -189,7 +189,7 @@ describe("gqlServerFetch", () => {
 		expect(fetchMock).toHaveBeenCalledTimes(1);
 	});
 
-	it.only("should use the provided timeout duration", async () => {
+	it("should use the provided timeout duration", async () => {
 		const timeoutSpy = vi.spyOn(AbortSignal, "timeout");
 		const gqlServerFetch = initServerFetcher("https://localhost/graphql", {
 			timeout: 1,
