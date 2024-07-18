@@ -18,6 +18,13 @@ type Options = {
 	 * @default false
 	 */
 	dangerouslyDisableCache?: boolean;
+
+	/**
+	 * Sets the timeout duration in ms after which a request will throw a timeout error
+	 *
+	 * @default 30000
+	 */
+	timeout?: number;
 };
 
 type CacheOptions = {
@@ -31,11 +38,15 @@ const tracer = trace.getTracer(
 );
 
 export const initServerFetcher =
-	(url: string, { dangerouslyDisableCache = false }: Options = {}) =>
+	(
+		url: string,
+		{ dangerouslyDisableCache = false, timeout = 30000 }: Options = {}
+	) =>
 	async <TResponse, TVariables>(
 		astNode: DocumentTypeDecoration<TResponse, TVariables>,
 		variables: TVariables,
-		{ cache, next = {} }: CacheOptions
+		{ cache, next = {} }: CacheOptions,
+		signal: AbortSignal = AbortSignal.timeout(timeout)
 	): Promise<GqlResponse<TResponse>> => {
 		const query = astNode.toString();
 		const operationName = extractOperationName(query) || "(GraphQL)";
@@ -49,7 +60,8 @@ export const initServerFetcher =
 					const response = await gqlPost(
 						url,
 						JSON.stringify({ operationName, query, variables }),
-						{ ...next, cache: "no-store" }
+						{ ...next, cache: "no-store" },
+						signal
 					);
 
 					span.end();
@@ -108,7 +120,8 @@ export const initServerFetcher =
 const gqlPost = async (
 	url: string,
 	body: string,
-	{ cache, next }: CacheOptions
+	{ cache, next }: CacheOptions,
+	signal: AbortSignal = AbortSignal.timeout(30000)
 ) => {
 	const response = await fetch(url, {
 		headers: defaultHeaders,
@@ -116,6 +129,7 @@ const gqlPost = async (
 		body,
 		cache,
 		next,
+		signal,
 	});
 
 	return parseResponse(response);
