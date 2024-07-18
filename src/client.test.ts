@@ -143,4 +143,35 @@ describe("gqlClientFetch", () => {
 
 		expect(gqlResponse).rejects.toThrow();
 	});
+
+	it.only("should use time out after 30 seconds by default", async () => {
+		const timeoutSpy = vi.spyOn(AbortSignal, "timeout");
+		fetchMock.mockResponse(responseString);
+
+		await fetcher(query, {
+			myVar: "baz",
+		});
+
+		expect(timeoutSpy).toHaveBeenCalledWith(30000);
+
+		// It should not try to POST the query if the persisted query cannot be parsed
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+	});
+
+	it.only("should use the provided timeout duration", async () => {
+		const fetcher = initClientFetcher("https://localhost/graphql", {
+			timeout: 1,
+		});
+		const timeoutSpy = vi.spyOn(AbortSignal, "timeout");
+		fetchMock.mockResponse(responseString);
+
+		await fetcher(query, {
+			myVar: "baz",
+		});
+
+		expect(timeoutSpy).toHaveBeenCalledWith(1);
+
+		// It should not try to POST the query if the persisted query cannot be parsed
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+	});
 });
