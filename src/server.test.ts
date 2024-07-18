@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { pruneObject } from "./helpers";
 import { initServerFetcher } from "./server";
 import { TypedDocumentString } from "./testing";
@@ -87,6 +87,7 @@ describe("gqlServerFetch", () => {
 					"Content-Type": "application/json",
 				},
 				next: { revalidate: 900 },
+				signal: expect.any(AbortSignal),
 			}
 		);
 	});
@@ -147,6 +148,7 @@ describe("gqlServerFetch", () => {
 				"Content-Type": "application/json",
 			},
 			cache: "no-store",
+			signal: expect.any(AbortSignal),
 		});
 	});
 	// This seems as if we test fetch itself but we're actually testing whether the fetcher properly propagates the fetch errors to the package consumers
@@ -169,6 +171,34 @@ describe("gqlServerFetch", () => {
 		await expect(() =>
 			gqlServerFetch(query, { myVar: "baz" }, {})
 		).rejects.toThrow();
+
+		// It should not try to POST the query if the persisted query cannot be parsed
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+	});
+
+	it.only("should use time out after 30 seconds by default", async () => {
+		const timeoutSpy = vi.spyOn(AbortSignal, "timeout");
+		const gqlServerFetch = initServerFetcher("https://localhost/graphql");
+		fetchMock.mockResponse(successResponse);
+
+		await gqlServerFetch(query, { myVar: "baz" }, {});
+
+		expect(timeoutSpy).toHaveBeenCalledWith(30000);
+
+		// It should not try to POST the query if the persisted query cannot be parsed
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+	});
+
+	it.only("should use the provided timeout duration", async () => {
+		const timeoutSpy = vi.spyOn(AbortSignal, "timeout");
+		const gqlServerFetch = initServerFetcher("https://localhost/graphql", {
+			timeout: 1,
+		});
+		fetchMock.mockResponse(successResponse);
+
+		await gqlServerFetch(query, { myVar: "baz" }, {});
+
+		expect(timeoutSpy).toHaveBeenCalledWith(1);
 
 		// It should not try to POST the query if the persisted query cannot be parsed
 		expect(fetchMock).toHaveBeenCalledTimes(1);
