@@ -158,7 +158,7 @@ describe("gqlClientFetch", () => {
 		expect(fetchMock).toHaveBeenCalledTimes(1);
 	});
 
-	it.only("should use the provided timeout duration", async () => {
+	it("should use the provided timeout duration", async () => {
 		const fetcher = initClientFetcher("https://localhost/graphql", {
 			timeout: 1,
 		});
