@@ -17,17 +17,25 @@ type Options = {
 	 * @default false
 	 */
 	persistedQueries?: boolean;
+
+	/**
+	 * Sets the timeout duration in ms after which a request will throw a timeout error
+	 *
+	 * @default 30000
+	 */
+	timeout?: number;
 };
 
 export type ClientFetcher = <TResponse, TVariables>(
 	astNode: DocumentTypeDecoration<TResponse, TVariables>,
-	variables?: TVariables
+	variables?: TVariables,
+	signal?: AbortSignal
 ) => Promise<GqlResponse<TResponse>>;
 
 export const initClientFetcher =
 	(
 		endpoint: string,
-		{ persistedQueries = false }: Options = {}
+		{ persistedQueries = false, timeout = 30000 }: Options = {}
 	): ClientFetcher =>
 	/**
 	 * Executes a GraphQL query post request on the client.
@@ -37,7 +45,8 @@ export const initClientFetcher =
 	 */
 	async <TResponse, TVariables>(
 		astNode: DocumentTypeDecoration<TResponse, TVariables>,
-		variables?: TVariables
+		variables?: TVariables,
+		signal: AbortSignal = AbortSignal.timeout(timeout)
 	): Promise<GqlResponse<TResponse>> => {
 		const query = astNode.toString();
 
@@ -72,6 +81,7 @@ export const initClientFetcher =
 					headers: defaultHeaders,
 					method: "GET",
 					credentials: "include",
+					signal,
 				})
 			);
 		}
