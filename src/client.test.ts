@@ -83,7 +83,8 @@ describe("gqlClientFetch", () => {
 				headers: {
 					"Content-Type": "application/json",
 				},
-			}
+				signal: expect.any(AbortSignal),
+			},
 		);
 	});
 	it("should perform a mutation", async () => {
