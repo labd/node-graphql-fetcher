@@ -144,7 +144,7 @@ describe("gqlClientFetch", () => {
 		expect(gqlResponse).rejects.toThrow();
 	});
 
-	it.only("should use time out after 30 seconds by default", async () => {
+	it("should use time out after 30 seconds by default", async () => {
 		const timeoutSpy = vi.spyOn(AbortSignal, "timeout");
 		fetchMock.mockResponse(responseString);
 

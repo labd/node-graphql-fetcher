@@ -176,7 +176,7 @@ describe("gqlServerFetch", () => {
 		expect(fetchMock).toHaveBeenCalledTimes(1);
 	});
 
-	it.only("should use time out after 30 seconds by default", async () => {
+	it("should use time out after 30 seconds by default", async () => {
 		const timeoutSpy = vi.spyOn(AbortSignal, "timeout");
 		const gqlServerFetch = initServerFetcher("https://localhost/graphql");
 		fetchMock.mockResponse(successResponse);
