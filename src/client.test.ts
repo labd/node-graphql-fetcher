@@ -60,6 +60,7 @@ describe("gqlClientFetch", () => {
 				headers: {
 					"Content-Type": "application/json",
 				},
+				signal: expect.any(AbortSignal),
 			}
 		);
 	});
@@ -84,7 +85,7 @@ describe("gqlClientFetch", () => {
 					"Content-Type": "application/json",
 				},
 				signal: expect.any(AbortSignal),
-			},
+			}
 		);
 	});
 	it("should perform a mutation", async () => {
@@ -161,7 +162,7 @@ describe("gqlClientFetch", () => {
 
 	it("should use the provided timeout duration", async () => {
 		const fetcher = initClientFetcher("https://localhost/graphql", {
-			timeout: 1,
+			defaultTimeout: 1,
 		});
 		const timeoutSpy = vi.spyOn(AbortSignal, "timeout");
 		fetchMock.mockResponse(responseString);
@@ -171,6 +172,30 @@ describe("gqlClientFetch", () => {
 		});
 
 		expect(timeoutSpy).toHaveBeenCalledWith(1);
+
+		// It should not try to POST the query if the persisted query cannot be parsed
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+	});
+
+	it("should use the provided signal", async () => {
+		const fetcher = initClientFetcher("https://localhost/graphql");
+		fetchMock.mockResponse(responseString);
+
+		const controller = new AbortController();
+		await fetcher(
+			query,
+			{
+				myVar: "baz",
+			},
+			controller.signal
+		);
+
+		expect(fetchMock).toHaveBeenCalledWith(
+			expect.any(String),
+			expect.objectContaining({
+				signal: controller.signal,
+			})
+		);
 
 		// It should not try to POST the query if the persisted query cannot be parsed
 		expect(fetchMock).toHaveBeenCalledTimes(1);

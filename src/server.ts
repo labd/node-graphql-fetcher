@@ -20,11 +20,11 @@ type Options = {
 	dangerouslyDisableCache?: boolean;
 
 	/**
-	 * Sets the timeout duration in ms after which a request will throw a timeout error
+	 * Sets the default timeout duration in ms after which a request will throw a timeout error
 	 *
 	 * @default 30000
 	 */
-	timeout?: number;
+	defaultTimeout?: number;
 };
 
 type CacheOptions = {
@@ -40,13 +40,13 @@ const tracer = trace.getTracer(
 export const initServerFetcher =
 	(
 		url: string,
-		{ dangerouslyDisableCache = false, timeout = 30000 }: Options = {}
+		{ dangerouslyDisableCache = false, defaultTimeout = 30000 }: Options = {}
 	) =>
 	async <TResponse, TVariables>(
 		astNode: DocumentTypeDecoration<TResponse, TVariables>,
 		variables: TVariables,
 		{ cache, next = {} }: CacheOptions,
-		signal: AbortSignal = AbortSignal.timeout(timeout)
+		signal: AbortSignal = AbortSignal.timeout(defaultTimeout)
 	): Promise<GqlResponse<TResponse>> => {
 		const query = astNode.toString();
 		const operationName = extractOperationName(query) || "(GraphQL)";
@@ -93,7 +93,8 @@ export const initServerFetcher =
 				let response = await gqlPersistedQuery(
 					url,
 					getQueryString(operationName, variables, extensions),
-					{ cache, next }
+					{ cache, next },
+					signal
 				);
 
 				if (response.errors?.[0]?.message === "PersistedQueryNotFound") {
@@ -101,7 +102,8 @@ export const initServerFetcher =
 					response = await gqlPost(
 						url,
 						JSON.stringify({ operationName, query, variables, extensions }),
-						{ cache, next }
+						{ cache, next },
+						signal
 					);
 				}
 
@@ -138,13 +140,15 @@ const gqlPost = async (
 const gqlPersistedQuery = async (
 	url: string,
 	queryString: URLSearchParams,
-	{ cache, next }: CacheOptions
+	{ cache, next }: CacheOptions,
+	signal: AbortSignal = AbortSignal.timeout(30000)
 ) => {
 	const response = await fetch(`${url}?${queryString}`, {
 		method: "GET",
 		headers: defaultHeaders,
 		cache,
 		next,
+		signal,
 	});
 
 	return parseResponse(response);
