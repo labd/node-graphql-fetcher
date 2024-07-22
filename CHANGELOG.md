@@ -1,5 +1,11 @@
 # @labdigital/react-query-opal
 
+## 1.1.0
+
+### Minor Changes
+
+- e32ea87: Added request timeout with support for custom signals for request cancelling
+
 ## 1.0.1
 
 ### Patch Changes
