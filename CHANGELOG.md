@@ -1,5 +1,11 @@
 # @labdigital/react-query-opal
 
+## 1.2.0
+
+### Minor Changes
+
+- 549714b: Support passing extra HTTP headers to client fetcher
+
 ## 1.1.0
 
 ### Minor Changes
