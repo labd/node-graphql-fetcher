@@ -3,12 +3,12 @@ import invariant from "tiny-invariant";
 import type { GqlResponse } from "./helpers";
 import {
 	createSha256,
-	defaultHeaders,
 	errorMessage,
 	extractOperationName,
 	getQueryHash,
 	getQueryType,
 	hasPersistedQueryError,
+	mergeHeaders,
 } from "./helpers";
 
 type Options = {
@@ -26,10 +26,16 @@ type Options = {
 	defaultTimeout?: number;
 };
 
+
+type RequestOptions = {
+	signal?: AbortSignal;
+	headers?: Headers | Record<string, string>;
+}
+
 export type ClientFetcher = <TResponse, TVariables>(
 	astNode: DocumentTypeDecoration<TResponse, TVariables>,
 	variables?: TVariables,
-	signal?: AbortSignal
+	options?: RequestOptions | AbortSignal  // Backwards compatibility
 ) => Promise<GqlResponse<TResponse>>;
 
 export const initClientFetcher =
@@ -46,10 +52,26 @@ export const initClientFetcher =
 	async <TResponse, TVariables>(
 		astNode: DocumentTypeDecoration<TResponse, TVariables>,
 		variables?: TVariables,
-		signal: AbortSignal = AbortSignal.timeout(defaultTimeout)
+		optionsOrSignal: RequestOptions | AbortSignal = {
+			signal: AbortSignal.timeout(defaultTimeout)
+		} satisfies RequestOptions
 	): Promise<GqlResponse<TResponse>> => {
-		const query = astNode.toString();
 
+		// For backwards compatibility, when options is an AbortSignal we transform
+		// it into a RequestOptions object
+		const options: RequestOptions = {}
+		if (optionsOrSignal instanceof AbortSignal) {
+			options.signal = optionsOrSignal
+		} else {
+			Object.assign(options, optionsOrSignal)
+		}
+
+		// Make sure that we always have a default signal set
+		if (!options.signal) {
+			options.signal = AbortSignal.timeout(defaultTimeout);
+		}
+
+		const query = astNode.toString();
 		const operationName = extractOperationName(query);
 
 		let hash = "";
@@ -70,6 +92,8 @@ export const initClientFetcher =
 
 		let response: GqlResponse<TResponse> | undefined = undefined;
 
+		const headers = mergeHeaders(options.headers)
+
 		// For queries we can use GET requests if persisted queries are enabled
 		if (persistedQueries && getQueryType(query) === "query") {
 			url.searchParams.set("extensions", JSON.stringify(extensions));
@@ -78,10 +102,10 @@ export const initClientFetcher =
 			}
 			response = await parseResponse<GqlResponse<TResponse>>(() =>
 				fetch(url.toString(), {
-					headers: defaultHeaders,
+					headers: Object.fromEntries(headers.entries()),
 					method: "GET",
 					credentials: "include",
-					signal,
+					signal: options.signal,
 				})
 			);
 		}
@@ -90,11 +114,11 @@ export const initClientFetcher =
 			// Persisted query not used or found, fall back to POST request and include extension to cache the query on the server
 			response = await parseResponse<GqlResponse<TResponse>>(() =>
 				fetch(url.toString(), {
-					headers: defaultHeaders,
+					headers: Object.fromEntries(headers.entries()),
 					method: "POST",
 					body: JSON.stringify({ query, variables, extensions }),
 					credentials: "include",
-					signal,
+					signal: options.signal,
 				})
 			);
 		}

@@ -9,6 +9,22 @@ export const defaultHeaders: Record<string, string> = {
 	"Content-Type": "application/json",
 };
 
+// mergeHeaders returns a new Headers object which is a combination of the
+// passed headers and default headers if they are not set
+export const mergeHeaders = (headers: Headers | Record<string, string> | undefined): Headers => {
+	if (!headers) {
+		return new Headers(defaultHeaders);
+	}
+
+	const result = new Headers(headers);
+	for (const [key, value] of Object.entries(defaultHeaders)) {
+		if (!result.has(key)) {
+			result.append(key, value);
+		}
+	}
+	return result;
+};
+
 export const getQueryType = (query: string) =>
 	query.trim().startsWith("query") ? "query" : "mutation";
 
