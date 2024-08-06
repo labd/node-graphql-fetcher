@@ -58,7 +58,7 @@ describe("gqlClientFetch", () => {
 				// These exact headers should be set:
 				credentials: "include",
 				headers: {
-					"Content-Type": "application/json",
+					"content-type": "application/json",
 				},
 				signal: expect.any(AbortSignal),
 			}
@@ -82,7 +82,7 @@ describe("gqlClientFetch", () => {
 				// These exact headers should be set:
 				credentials: "include",
 				headers: {
-					"Content-Type": "application/json",
+					"content-type": "application/json",
 				},
 				signal: expect.any(AbortSignal),
 			}
@@ -199,5 +199,37 @@ describe("gqlClientFetch", () => {
 
 		// It should not try to POST the query if the persisted query cannot be parsed
 		expect(fetchMock).toHaveBeenCalledTimes(1);
+	});
+
+
+	it("should allow passing extra HTTP headers", async () => {
+		const mockedFetch = fetchMock.mockResponse(responseString);
+		const gqlResponse = await fetcher(query, {
+			myVar: "baz",
+		}, {
+			headers: {
+				"X-extra-header": "foo",
+			}
+		});
+
+		expect(gqlResponse).toEqual(response);
+
+		expect(mockedFetch).toHaveBeenCalledWith(
+			// This exact URL should be called, note the ?op=myQuery.
+			"https://localhost/graphql?op=myQuery",
+			{
+				// This exact body should be sent:
+				body: '{"query":"\\n\\tquery myQuery {\\n\\t\\tfoo\\n\\t\\tbar\\n\\t}\\n","variables":{"myVar":"baz"},"extensions":{}}',
+				// Method was post:
+				method: "POST",
+				// These exact headers should be set:
+				credentials: "include",
+				headers: {
+					"content-type": "application/json",
+					"x-extra-header": "foo",
+				},
+				signal: expect.any(AbortSignal),
+			}
+		);
 	});
 });

@@ -12,6 +12,24 @@ Only used for fetching from GraphQL endpoints.
 - Client fetcher with React context support when the endpoint is only known at runtime
 - Next data cache support
 
+
+## Usage
+
+```ts
+import { initClientFetcher } from "@labdigital/graphql-fetcher";
+
+const fetcher = initClientFetcher("https://localhost/graphql");
+
+const gqlResponse = await fetcher(query, {
+	myVar: "baz",
+}, {
+	signal: AbortSignal.timeout(10),
+	headers: {
+		"X-extra-header": "foo",
+	}
+});
+```
+
 ## Notes
 
 ### Node 18.x requires webcrypto on globalThis
