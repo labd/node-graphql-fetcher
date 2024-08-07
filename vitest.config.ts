@@ -2,20 +2,20 @@ import { defineConfig } from "vitest/config";
 import path from "path";
 
 export default defineConfig({
-  test: {
-    coverage: {
-      provider: "v8",
-      all: true,
-      include: ["src/**/*.ts"],
-      reportsDirectory: "./test-reports/",
-    },
+	test: {
+		coverage: {
+			provider: "v8",
+			all: true,
+			include: ["src/**/*.ts"],
+			reportsDirectory: "./test-reports/",
+		},
 		setupFiles: [path.join(__dirname, "vitest.setup.ts")],
-    passWithNoTests: true,
-  },
+		passWithNoTests: true,
+	},
 
-  resolve: {
-    alias: {
-      "~src": path.join(__dirname, "src"),
-    },
-  },
+	resolve: {
+		alias: {
+			"~src": path.join(__dirname, "src"),
+		},
+	},
 });

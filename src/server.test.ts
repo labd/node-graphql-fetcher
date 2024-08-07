@@ -9,6 +9,12 @@ const query = new TypedDocumentString(`
 		bar
 	}
 `);
+const queryMutation = new TypedDocumentString(`
+	mutation myMutation {
+		foo
+		bar
+	}
+`);
 
 const hash = "e5276e0694f661ef818210402d06d249625ef169a1c2b60383acb2c42d45f7ae";
 const response = { foo: "foo", bar: "bar" };
@@ -92,6 +98,40 @@ describe("gqlServerFetch", () => {
 			}
 		);
 	});
+
+	it("should skip persisted queries if operation is a mutation", async () => {
+		const gqlServerFetch = initServerFetcher("https://localhost/graphql");
+		const mockedFetch = fetchMock.mockResponseOnce(successResponse);
+
+		const gqlResponse = await gqlServerFetch(
+			queryMutation,
+			{ myVar: "baz" },
+			{
+				next: { revalidate: 900 },
+			}
+		);
+
+		expect(gqlResponse).toEqual(response);
+		expect(mockedFetch).toHaveBeenCalledTimes(1);
+		expect(mockedFetch).toHaveBeenNthCalledWith(
+			1,
+			"https://localhost/graphql",
+			{
+				method: "POST",
+				body: JSON.stringify({
+					operationName: "myMutation",
+					query: queryMutation.toString(),
+					variables: { myVar: "baz" },
+					extensions: undefined,
+				}),
+				headers: {
+					"Content-Type": "application/json",
+				},
+				next: { revalidate: 900 },
+			}
+		);
+	});
+
 	it("should fetch a persisted query without revalidate", async () => {
 		const gqlServerFetch = initServerFetcher("https://localhost/graphql");
 		const mockedFetch = fetchMock.mockResponse(successResponse);
