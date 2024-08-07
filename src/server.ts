@@ -77,9 +77,8 @@ export const initServerFetcher =
 			});
 		}
 
-
 		// Skip persisted queries if operation is a mutation
-		const queryType = getQueryType(query)
+		const queryType = getQueryType(query);
 		if (queryType === "mutation") {
 			return tracer.startActiveSpan(operationName, async (span) => {
 				try {
@@ -88,7 +87,7 @@ export const initServerFetcher =
 						JSON.stringify({ operationName, query, variables }),
 						{ cache, next }
 					);
-	
+
 					span.end();
 					return response as GqlResponse<TResponse>;
 				} catch (err: any) {
@@ -98,7 +97,7 @@ export const initServerFetcher =
 					});
 					throw err;
 				}
-			})
+			});
 		}
 
 		/**
