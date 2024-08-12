@@ -1,5 +1,11 @@
 # @labdigital/react-query-opal
 
+## 1.3.0
+
+### Minor Changes
+
+- 27e253b: Skip persisted queries for server-side mutations
+
 ## 1.2.0
 
 ### Minor Changes
