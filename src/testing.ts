@@ -9,4 +9,8 @@ export class TypedDocumentString<TResult, TVariables>
 	constructor(private value: string, public __meta__?: Record<string, any>) {
 		super(value);
 	}
+
+	// Choosing a leaf type will trigger the print visitor to output the value directly
+	// instead of trying to visit the children
+	kind = "StringValue";
 }
