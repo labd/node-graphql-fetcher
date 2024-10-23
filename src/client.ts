@@ -10,6 +10,8 @@ import {
 	hasPersistedQueryError,
 	mergeHeaders,
 } from "./helpers";
+import { print } from "graphql/language/printer";
+import { ASTNode } from "graphql";
 
 type Options = {
 	/**
@@ -26,16 +28,15 @@ type Options = {
 	defaultTimeout?: number;
 };
 
-
 type RequestOptions = {
 	signal?: AbortSignal;
 	headers?: Headers | Record<string, string>;
-}
+};
 
 export type ClientFetcher = <TResponse, TVariables>(
 	astNode: DocumentTypeDecoration<TResponse, TVariables>,
 	variables?: TVariables,
-	options?: RequestOptions | AbortSignal  // Backwards compatibility
+	options?: RequestOptions | AbortSignal // Backwards compatibility
 ) => Promise<GqlResponse<TResponse>>;
 
 export const initClientFetcher =
@@ -53,25 +54,23 @@ export const initClientFetcher =
 		astNode: DocumentTypeDecoration<TResponse, TVariables>,
 		variables?: TVariables,
 		optionsOrSignal: RequestOptions | AbortSignal = {
-			signal: AbortSignal.timeout(defaultTimeout)
+			signal: AbortSignal.timeout(defaultTimeout),
 		} satisfies RequestOptions
 	): Promise<GqlResponse<TResponse>> => {
-
 		// For backwards compatibility, when options is an AbortSignal we transform
 		// it into a RequestOptions object
-		const options: RequestOptions = {}
+		const options: RequestOptions = {};
 		if (optionsOrSignal instanceof AbortSignal) {
-			options.signal = optionsOrSignal
+			options.signal = optionsOrSignal;
 		} else {
-			Object.assign(options, optionsOrSignal)
+			Object.assign(options, optionsOrSignal);
 		}
 
 		// Make sure that we always have a default signal set
 		if (!options.signal) {
 			options.signal = AbortSignal.timeout(defaultTimeout);
 		}
-
-		const query = astNode.toString();
+		const query = print(astNode as ASTNode);
 		const operationName = extractOperationName(query);
 
 		let hash = "";
@@ -92,7 +91,7 @@ export const initClientFetcher =
 
 		let response: GqlResponse<TResponse> | undefined = undefined;
 
-		const headers = mergeHeaders(options.headers)
+		const headers = mergeHeaders(options.headers);
 
 		// For queries we can use GET requests if persisted queries are enabled
 		if (persistedQueries && getQueryType(query) === "query") {
