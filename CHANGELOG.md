@@ -1,5 +1,11 @@
 # @labdigital/react-query-opal
 
+## 1.3.1
+
+### Patch Changes
+
+- 9a078cf: Fix string serialization of query
+
 ## 1.3.0
 
 ### Minor Changes
