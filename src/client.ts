@@ -10,7 +10,8 @@ import {
 	hasPersistedQueryError,
 	mergeHeaders,
 } from "./helpers";
-import { print, ASTNode } from "graphql";
+import { print } from "graphql";
+import { isNode } from "graphql/language/ast";
 
 type Options = {
 	/**
@@ -69,7 +70,11 @@ export const initClientFetcher =
 		if (!options.signal) {
 			options.signal = AbortSignal.timeout(defaultTimeout);
 		}
-		const query = JSON.parse(print(astNode as ASTNode));
+
+		const query = isNode(astNode)
+			? JSON.parse(print(astNode))
+			: astNode.toString();
+
 		const operationName = extractOperationName(query);
 
 		let hash = "";
