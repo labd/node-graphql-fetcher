@@ -11,6 +11,8 @@ import {
 	getQueryType,
 	pruneObject,
 } from "./helpers";
+import { print } from "graphql/language/printer";
+import { ASTNode } from "graphql";
 
 type Options = {
 	/**
@@ -49,7 +51,7 @@ export const initServerFetcher =
 		{ cache, next = {} }: CacheOptions,
 		signal: AbortSignal = AbortSignal.timeout(defaultTimeout)
 	): Promise<GqlResponse<TResponse>> => {
-		const query = astNode.toString();
+		const query = print(astNode as ASTNode);
 		const operationName = extractOperationName(query) || "(GraphQL)";
 
 		if (dangerouslyDisableCache) {
