@@ -166,6 +166,45 @@ describe("gqlServerFetch", () => {
 		);
 	});
 
+	it("should fetch a with custom headers", async () => {
+		const gqlServerFetch = initServerFetcher("https://localhost/graphql");
+		const mockedFetch = fetchMock.mockResponse(successResponse);
+		const gqlResponse = await gqlServerFetch(
+			query,
+			{ myVar: "baz" },
+			{ cache: "force-cache", next: { revalidate: 900 } },
+			{
+				headers: {
+					"x-custom-header": "foo",
+				},
+			}
+		);
+
+		const queryString = new URLSearchParams(
+			pruneObject({
+				operationName: "myQuery",
+				variables: '{"myVar":"baz"}',
+				extensions: `{"persistedQuery":{"version":1,"sha256Hash":"${hash}"}}`,
+			})
+		);
+
+		expect(gqlResponse).toEqual(response);
+		expect(mockedFetch).toHaveBeenCalledTimes(1);
+		expect(mockedFetch).toHaveBeenCalledWith(
+			`https://localhost/graphql?${queryString}`,
+			{
+				method: "GET", // <- Note that for persisted queries, the method is 'GET'
+				headers: {
+					"Content-Type": "application/json",
+					"x-custom-header": "foo",
+				},
+				cache: "force-cache",
+				next: { revalidate: 900 },
+				signal: expect.any(AbortSignal),
+			}
+		);
+	});
+
 	it("should disable cache when disableCache is set", async () => {
 		const gqlServerFetch = initServerFetcher("https://localhost/graphql", {
 			dangerouslyDisableCache: true,
@@ -194,6 +233,7 @@ describe("gqlServerFetch", () => {
 			signal: expect.any(AbortSignal),
 		});
 	});
+
 	// This seems as if we test fetch itself but we're actually testing whether the fetcher properly propagates the fetch errors to the package consumers
 	it("should throw when JSON can't be parsed", async () => {
 		const gqlServerFetch = initServerFetcher("https://localhost/graphql");
