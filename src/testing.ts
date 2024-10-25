@@ -12,5 +12,5 @@ export class TypedDocumentString<TResult, TVariables>
 
 	// Choosing a leaf type will trigger the print visitor to output the value directly
 	// instead of trying to visit the children
-	kind = "StringValue";
+	kind = "IntValue";
 }

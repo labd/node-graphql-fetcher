@@ -11,7 +11,7 @@ import {
 	getQueryType,
 	pruneObject,
 } from "./helpers";
-import { print, ASTNode } from "graphql";
+import { print } from "graphql";
 import { isNode } from "graphql/language/ast";
 
 type Options = {
@@ -51,9 +51,7 @@ export const initServerFetcher =
 		{ cache, next = {} }: CacheOptions,
 		signal: AbortSignal = AbortSignal.timeout(defaultTimeout)
 	): Promise<GqlResponse<TResponse>> => {
-		const query = isNode(astNode)
-			? JSON.parse(print(astNode))
-			: astNode.toString();
+		const query = isNode(astNode) ? print(astNode) : astNode.toString();
 
 		const operationName = extractOperationName(query) || "(GraphQL)";
 

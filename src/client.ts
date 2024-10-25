@@ -71,9 +71,7 @@ export const initClientFetcher =
 			options.signal = AbortSignal.timeout(defaultTimeout);
 		}
 
-		const query = isNode(astNode)
-			? JSON.parse(print(astNode))
-			: astNode.toString();
+		const query = isNode(astNode) ? print(astNode) : astNode.toString();
 
 		const operationName = extractOperationName(query);
 
