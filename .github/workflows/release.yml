@@ -15,7 +15,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 20
+          node-version: 22
 
       - uses: pnpm/action-setup@v2
         name: Install pnpm
@@ -33,7 +33,7 @@ jobs:
     needs: lint
     strategy:
       matrix:
-        node: ["18.x", "20.x"]
+        node: ["20.x", "22.x"]
         os: [ubuntu-latest]
 
     steps:
@@ -80,7 +80,7 @@ jobs:
       - name: Install node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 20
+          node-version: 22
           cache: "pnpm"
 
       - name: Create and publish versions
