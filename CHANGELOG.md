@@ -1,5 +1,11 @@
 # @labdigital/react-query-opal
 
+## 1.4.0
+
+### Minor Changes
+
+- d5d1ffa: Allow passing headers in server fetcher, mirroring functionality of client fetcher
+
 ## 1.3.2
 
 ### Patch Changes
