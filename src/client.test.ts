@@ -161,6 +161,7 @@ describe("gqlClientFetch", () => {
 	});
 
 	it("should use the provided timeout duration", async () => {
+		vi.useFakeTimers();
 		const fetcher = initClientFetcher("https://localhost/graphql", {
 			defaultTimeout: 1,
 		});
@@ -170,6 +171,8 @@ describe("gqlClientFetch", () => {
 		await fetcher(query, {
 			myVar: "baz",
 		});
+
+		vi.runAllTimers();
 
 		expect(timeoutSpy).toHaveBeenCalledWith(1);
 
@@ -201,16 +204,19 @@ describe("gqlClientFetch", () => {
 		expect(fetchMock).toHaveBeenCalledTimes(1);
 	});
 
-
 	it("should allow passing extra HTTP headers", async () => {
 		const mockedFetch = fetchMock.mockResponse(responseString);
-		const gqlResponse = await fetcher(query, {
-			myVar: "baz",
-		}, {
-			headers: {
-				"X-extra-header": "foo",
+		const gqlResponse = await fetcher(
+			query,
+			{
+				myVar: "baz",
+			},
+			{
+				headers: {
+					"X-extra-header": "foo",
+				},
 			}
-		});
+		);
 
 		expect(gqlResponse).toEqual(response);
 
