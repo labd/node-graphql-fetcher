@@ -14,6 +14,11 @@ import {
 import { print } from "graphql";
 import { isNode } from "graphql/language/ast";
 
+type RequestOptions = {
+	signal?: AbortSignal;
+	headers?: Headers | Record<string, string>;
+};
+
 type Options = {
 	/**
 	 * Disables all forms of caching for the fetcher, use only in development
@@ -49,14 +54,31 @@ export const initServerFetcher =
 		astNode: DocumentTypeDecoration<TResponse, TVariables>,
 		variables: TVariables,
 		{ cache, next = {} }: CacheOptions,
-		signal: AbortSignal = AbortSignal.timeout(defaultTimeout)
+		optionsOrSignal: RequestOptions | AbortSignal = {
+			signal: AbortSignal.timeout(defaultTimeout),
+		} satisfies RequestOptions
 	): Promise<GqlResponse<TResponse>> => {
 		const query = isNode(astNode) ? print(astNode) : astNode.toString();
 
 		const operationName = extractOperationName(query) || "(GraphQL)";
 
+		// For backwards compatibility, when options is an AbortSignal we transform
+		// it into a RequestOptions object
+		const options: RequestOptions = {};
+		if (optionsOrSignal instanceof AbortSignal) {
+			options.signal = optionsOrSignal;
+		} else {
+			Object.assign(options, optionsOrSignal);
+		}
+
+		// Make sure that we always have a default signal set
+		if (!options.signal) {
+			options.signal = AbortSignal.timeout(defaultTimeout);
+		}
+
 		if (dangerouslyDisableCache) {
-			// If we force the cache field we shouldn't set revalidate at all, it will throw a warning otherwise
+			// If we force the cache field we shouldn't set revalidate at all, it will
+			// throw a warning otherwise
 			delete next.revalidate;
 
 			return tracer.startActiveSpan(operationName, async (span) => {
@@ -65,7 +87,7 @@ export const initServerFetcher =
 						url,
 						JSON.stringify({ operationName, query, variables }),
 						{ ...next, cache: "no-store" },
-						signal
+						options
 					);
 
 					span.end();
@@ -88,7 +110,8 @@ export const initServerFetcher =
 					const response = await gqlPost(
 						url,
 						JSON.stringify({ operationName, query, variables }),
-						{ cache, next }
+						{ cache, next },
+						options
 					);
 
 					span.end();
@@ -121,7 +144,7 @@ export const initServerFetcher =
 					url,
 					getQueryString(operationName, variables, extensions),
 					{ cache, next },
-					signal
+					options
 				);
 
 				if (response.errors?.[0]?.message === "PersistedQueryNotFound") {
@@ -130,7 +153,7 @@ export const initServerFetcher =
 						url,
 						JSON.stringify({ operationName, query, variables, extensions }),
 						{ cache, next },
-						signal
+						options
 					);
 				}
 
@@ -150,15 +173,19 @@ const gqlPost = async (
 	url: string,
 	body: string,
 	{ cache, next }: CacheOptions,
-	signal: AbortSignal = AbortSignal.timeout(30000)
+	options: RequestOptions
 ) => {
+	const headers = {
+		...defaultHeaders,
+		...options.headers,
+	};
 	const response = await fetch(url, {
-		headers: defaultHeaders,
+		headers: headers,
 		method: "POST",
 		body,
 		cache,
 		next,
-		signal,
+		signal: options.signal,
 	});
 
 	return parseResponse(response);
@@ -168,14 +195,18 @@ const gqlPersistedQuery = async (
 	url: string,
 	queryString: URLSearchParams,
 	{ cache, next }: CacheOptions,
-	signal: AbortSignal = AbortSignal.timeout(30000)
+	options: RequestOptions
 ) => {
+	const headers = {
+		...defaultHeaders,
+		...options.headers,
+	};
 	const response = await fetch(`${url}?${queryString}`, {
 		method: "GET",
-		headers: defaultHeaders,
+		headers: headers,
 		cache,
 		next,
-		signal,
+		signal: options.signal,
 	});
 
 	return parseResponse(response);

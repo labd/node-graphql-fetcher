@@ -11,7 +11,9 @@ export const defaultHeaders: Record<string, string> = {
 
 // mergeHeaders returns a new Headers object which is a combination of the
 // passed headers and default headers if they are not set
-export const mergeHeaders = (headers: Headers | Record<string, string> | undefined): Headers => {
+export const mergeHeaders = (
+	headers: Headers | Record<string, string> | undefined
+): Headers => {
 	if (!headers) {
 		return new Headers(defaultHeaders);
 	}
