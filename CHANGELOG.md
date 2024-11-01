@@ -1,5 +1,11 @@
 # @labdigital/react-query-opal
 
+## 1.4.1
+
+### Patch Changes
+
+- 1e1d13d: update imports for ast
+
 ## 1.4.0
 
 ### Minor Changes
