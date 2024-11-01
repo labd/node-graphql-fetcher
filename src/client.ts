@@ -11,7 +11,7 @@ import {
 	mergeHeaders,
 } from "./helpers";
 import { print } from "graphql";
-import { isNode } from "graphql/language/ast";
+import { isNode } from "graphql/language/ast.js";
 
 type Options = {
 	/**
