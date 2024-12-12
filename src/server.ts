@@ -57,7 +57,7 @@ export const initServerFetcher =
 		{
 			dangerouslyDisableCache = false,
 			defaultTimeout = 30000,
-			defaultHeaders,
+			defaultHeaders = {},
 		}: Options = {}
 	) =>
 	async <TResponse, TVariables>(
