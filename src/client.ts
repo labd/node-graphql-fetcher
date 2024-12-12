@@ -1,11 +1,10 @@
 import { DocumentTypeDecoration } from "@graphql-typed-document-node/core";
 import invariant from "tiny-invariant";
-import type { GqlResponse } from "./helpers";
+import { getDocumentId, GqlResponse } from "./helpers";
 import {
 	createSha256,
 	errorMessage,
 	extractOperationName,
-	getQueryHash,
 	getQueryType,
 	hasPersistedQueryError,
 	mergeHeaders,
@@ -26,6 +25,11 @@ type Options = {
 	 * @default 30000
 	 */
 	defaultTimeout?: number;
+
+	/**
+	 * Default headers to be sent with each request
+	 */
+	defaultHeaders?: Headers | Record<string, string>;
 };
 
 type RequestOptions = {
@@ -42,7 +46,11 @@ export type ClientFetcher = <TResponse, TVariables>(
 export const initClientFetcher =
 	(
 		endpoint: string,
-		{ persistedQueries = false, defaultTimeout = 30000 }: Options = {}
+		{
+			persistedQueries = false,
+			defaultTimeout = 30000,
+			defaultHeaders,
+		}: Options = {}
 	): ClientFetcher =>
 	/**
 	 * Executes a GraphQL query post request on the client.
@@ -74,11 +82,11 @@ export const initClientFetcher =
 		const query = isNode(astNode) ? print(astNode) : astNode.toString();
 
 		const operationName = extractOperationName(query);
+		const documentId = getDocumentId(astNode);
 
-		let hash = "";
 		let extensions = {};
 		if (persistedQueries) {
-			hash = getQueryHash(astNode) ?? (await createSha256(query));
+			const hash = await createSha256(query);
 
 			extensions = {
 				persistedQuery: {
@@ -93,13 +101,16 @@ export const initClientFetcher =
 
 		let response: GqlResponse<TResponse> | undefined = undefined;
 
-		const headers = mergeHeaders(options.headers);
+		const headers = mergeHeaders({ ...defaultHeaders, ...options.headers });
 
 		// For queries we can use GET requests if persisted queries are enabled
 		if (persistedQueries && getQueryType(query) === "query") {
 			url.searchParams.set("extensions", JSON.stringify(extensions));
 			if (variables) {
 				url.searchParams.set("variables", JSON.stringify(variables));
+			}
+			if (documentId) {
+				url.searchParams.set("documentId", documentId);
 			}
 			response = await parseResponse<GqlResponse<TResponse>>(() =>
 				fetch(url.toString(), {
@@ -117,7 +128,7 @@ export const initClientFetcher =
 				fetch(url.toString(), {
 					headers: Object.fromEntries(headers.entries()),
 					method: "POST",
-					body: JSON.stringify({ query, variables, extensions }),
+					body: JSON.stringify({ documentId, query, variables, extensions }),
 					credentials: "include",
 					signal: options.signal,
 				})

@@ -1,13 +1,14 @@
 import { DocumentTypeDecoration } from "@graphql-typed-document-node/core";
 import { SpanStatusCode, trace } from "@opentelemetry/api";
 import invariant from "tiny-invariant";
-import type { GqlResponse, NextFetchRequestConfig } from "./helpers";
 import {
+	getDocumentId,
+	GqlResponse,
+	NextFetchRequestConfig,
 	createSha256,
 	defaultHeaders,
 	errorMessage,
 	extractOperationName,
-	getQueryHash,
 	getQueryType,
 	pruneObject,
 } from "./helpers";
@@ -33,6 +34,11 @@ type Options = {
 	 * @default 30000
 	 */
 	defaultTimeout?: number;
+
+	/**
+	 * Default headers to be sent with each request
+	 */
+	defaultHeaders?: Headers | Record<string, string>;
 };
 
 type CacheOptions = {
@@ -48,7 +54,11 @@ const tracer = trace.getTracer(
 export const initServerFetcher =
 	(
 		url: string,
-		{ dangerouslyDisableCache = false, defaultTimeout = 30000 }: Options = {}
+		{
+			dangerouslyDisableCache = false,
+			defaultTimeout = 30000,
+			defaultHeaders,
+		}: Options = {}
 	) =>
 	async <TResponse, TVariables>(
 		astNode: DocumentTypeDecoration<TResponse, TVariables>,
@@ -61,10 +71,13 @@ export const initServerFetcher =
 		const query = isNode(astNode) ? print(astNode) : astNode.toString();
 
 		const operationName = extractOperationName(query) || "(GraphQL)";
+		const documentId = getDocumentId(astNode);
 
 		// For backwards compatibility, when options is an AbortSignal we transform
 		// it into a RequestOptions object
-		const options: RequestOptions = {};
+		const options: RequestOptions = {
+			headers: defaultHeaders,
+		};
 		if (optionsOrSignal instanceof AbortSignal) {
 			options.signal = optionsOrSignal;
 		} else {
@@ -85,7 +98,7 @@ export const initServerFetcher =
 				try {
 					const response = await gqlPost(
 						url,
-						JSON.stringify({ operationName, query, variables }),
+						JSON.stringify({ documentId, operationName, query, variables }),
 						{ ...next, cache: "no-store" },
 						options
 					);
@@ -109,7 +122,7 @@ export const initServerFetcher =
 				try {
 					const response = await gqlPost(
 						url,
-						JSON.stringify({ operationName, query, variables }),
+						JSON.stringify({ documentId, operationName, query, variables }),
 						{ cache, next },
 						options
 					);
@@ -133,7 +146,7 @@ export const initServerFetcher =
 		const extensions = {
 			persistedQuery: {
 				version: 1,
-				sha256Hash: getQueryHash(astNode) ?? (await createSha256(query)),
+				sha256Hash: await createSha256(query),
 			},
 		};
 
@@ -142,7 +155,7 @@ export const initServerFetcher =
 			try {
 				let response = await gqlPersistedQuery(
 					url,
-					getQueryString(operationName, variables, extensions),
+					getQueryString(documentId, operationName, variables, extensions),
 					{ cache, next },
 					options
 				);
@@ -151,7 +164,13 @@ export const initServerFetcher =
 					// If the cached query doesn't exist, fall back to POST request and let the server cache it.
 					response = await gqlPost(
 						url,
-						JSON.stringify({ operationName, query, variables, extensions }),
+						JSON.stringify({
+							documentId,
+							operationName,
+							query,
+							variables,
+							extensions,
+						}),
 						{ cache, next },
 						options
 					);
@@ -213,12 +232,14 @@ const gqlPersistedQuery = async (
 };
 
 const getQueryString = <TVariables>(
+	documentId: string | undefined,
 	operationName: string | undefined,
 	variables: TVariables | undefined,
 	extensions: { persistedQuery: { version: number; sha256Hash: string } }
 ) =>
 	new URLSearchParams(
 		pruneObject({
+			documentId,
 			operationName,
 			variables: JSON.stringify(variables),
 			extensions: JSON.stringify(extensions),
