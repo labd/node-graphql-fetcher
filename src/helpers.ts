@@ -30,9 +30,9 @@ export const mergeHeaders = (
 export const getQueryType = (query: string) =>
 	query.trim().startsWith("query") ? "query" : "mutation";
 
-export const getQueryHash = <TResult, TVariables>(
+export const getDocumentId = <TResult, TVariables>(
 	query: DocumentTypeDecoration<TResult, TVariables>
-) => (query as any)?.["__meta__"]?.["hash"];
+): string | undefined => (query as any)?.["__meta__"]?.["hash"];
 
 export type GraphQLError = {
 	message: string;
