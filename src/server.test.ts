@@ -83,12 +83,6 @@ describe("gqlServerFetch", () => {
 					operationName: "myQuery",
 					query: query.toString(),
 					variables: { myVar: "baz" },
-					extensions: {
-						persistedQuery: {
-							version: 1,
-							sha256Hash: hash,
-						},
-					},
 				}),
 				headers: {
 					"Content-Type": "application/json",
