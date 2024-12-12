@@ -1,4 +1,5 @@
 import { DocumentTypeDecoration } from "@graphql-typed-document-node/core";
+import { createHash } from "@apollo/utils.createhash";
 
 export const extractOperationName = (query: string) => {
 	const matches = query.match(/(query|mutation)\s(\w+)/);
@@ -57,19 +58,10 @@ export interface NextFetchRequestConfig {
 export const pruneObject = <T>(object: T): Partial<T> =>
 	JSON.parse(JSON.stringify(object ?? null));
 
-/**
- * Simple wrapper to create a SHA256 hash with subtle crypto
- * @param message Message to hash
- */
+// createSha256 creates a sha256 hash from a message with the same algorithm as Apollo Server, so we know for certain
+// the same hash is used for automatic persisted queries
 export const createSha256 = async (message: string) => {
-	const hash = await crypto.subtle.digest(
-		"SHA-256",
-		new TextEncoder().encode(message)
-	);
-
-	return Array.from(new Uint8Array(hash))
-		.map((b) => b.toString(16).padStart(2, "0"))
-		.join("");
+	return createHash("sha256").update(message).digest("hex");
 };
 
 /**

@@ -30,6 +30,15 @@ type Options = {
 	 * Default headers to be sent with each request
 	 */
 	defaultHeaders?: Headers | Record<string, string>;
+
+	/**
+	 * Function to customize creating the documentId from a query
+	 *
+	 * @param query
+	 */
+	createDocumentId?: <TResult, TVariables>(
+		query: DocumentTypeDecoration<TResult, TVariables>
+	) => string | undefined;
 };
 
 type RequestOptions = {
@@ -50,6 +59,9 @@ export const initClientFetcher =
 			persistedQueries = false,
 			defaultTimeout = 30000,
 			defaultHeaders = {},
+			createDocumentId = <TResult, TVariables>(
+				query: DocumentTypeDecoration<TResult, TVariables>
+			): string | undefined => getDocumentId(query),
 		}: Options = {}
 	): ClientFetcher =>
 	/**
@@ -82,7 +94,7 @@ export const initClientFetcher =
 		const query = isNode(astNode) ? print(astNode) : astNode.toString();
 
 		const operationName = extractOperationName(query);
-		const documentId = getDocumentId(astNode);
+		const documentId = createDocumentId(astNode);
 
 		let extensions = {};
 		if (persistedQueries) {
@@ -140,8 +152,8 @@ export const initClientFetcher =
 
 /**
  * Checks if fetch succeeded and parses the response body
- * @param response Fetch response object
  * @returns GraphQL response body
+ * @param fetchFn
  */
 const parseResponse = async <T>(
 	fetchFn: () => Promise<Response>

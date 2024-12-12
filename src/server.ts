@@ -39,6 +39,15 @@ type Options = {
 	 * Default headers to be sent with each request
 	 */
 	defaultHeaders?: Headers | Record<string, string>;
+
+	/**
+	 * Function to customize creating the documentId from a query
+	 *
+	 * @param query
+	 */
+	createDocumentId?: <TResult, TVariables>(
+		query: DocumentTypeDecoration<TResult, TVariables>
+	) => string | undefined;
 };
 
 type CacheOptions = {
@@ -58,6 +67,9 @@ export const initServerFetcher =
 			dangerouslyDisableCache = false,
 			defaultTimeout = 30000,
 			defaultHeaders = {},
+			createDocumentId = <TResult, TVariables>(
+				query: DocumentTypeDecoration<TResult, TVariables>
+			): string | undefined => getDocumentId(query),
 		}: Options = {}
 	) =>
 	async <TResponse, TVariables>(
@@ -71,7 +83,7 @@ export const initServerFetcher =
 		const query = isNode(astNode) ? print(astNode) : astNode.toString();
 
 		const operationName = extractOperationName(query) || "(GraphQL)";
-		const documentId = getDocumentId(astNode);
+		const documentId = createDocumentId(astNode);
 
 		// For backwards compatibility, when options is an AbortSignal we transform
 		// it into a RequestOptions object
@@ -142,6 +154,8 @@ export const initServerFetcher =
 		/**
 		 * Replace full queries with generated ID's to reduce bandwidth.
 		 * @see https://www.apollographql.com/docs/react/api/link/persisted-queries/#protocol
+		 *
+		 * Note that these are not the same hashes as the documentId, which is used for allowlisting of query documents
 		 */
 		const extensions = {
 			persistedQuery: {
@@ -169,7 +183,6 @@ export const initServerFetcher =
 							operationName,
 							query,
 							variables,
-							extensions,
 						}),
 						{ cache, next },
 						options
