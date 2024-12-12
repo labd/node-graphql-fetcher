@@ -49,7 +49,7 @@ export const initClientFetcher =
 		{
 			persistedQueries = false,
 			defaultTimeout = 30000,
-			defaultHeaders,
+			defaultHeaders = {},
 		}: Options = {}
 	): ClientFetcher =>
 	/**
