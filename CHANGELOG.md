@@ -1,5 +1,11 @@
 # @labdigital/react-query-opal
 
+## 1.5.0-next.0
+
+### Minor Changes
+
+- Added documentId and default headers
+
 ## 1.4.1
 
 ### Patch Changes

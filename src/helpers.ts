@@ -32,7 +32,7 @@ export const getQueryType = (query: string) =>
 
 export const getDocumentId = <TResult, TVariables>(
 	query: DocumentTypeDecoration<TResult, TVariables>
-): string | undefined => (query as any)?.["__meta__"]?.["hash"];
+): string | undefined => (query as any)?.["__meta__"]?.["documentId"];
 
 export type GraphQLError = {
 	message: string;

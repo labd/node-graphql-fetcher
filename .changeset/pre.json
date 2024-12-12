@@ -1,0 +1,10 @@
+{
+  "mode": "pre",
+  "tag": "next",
+  "initialVersions": {
+    "@labdigital/graphql-fetcher": "1.4.1"
+  },
+  "changesets": [
+    "tough-grapes-hug"
+  ]
+}
