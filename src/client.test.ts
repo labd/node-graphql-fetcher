@@ -61,7 +61,7 @@ describe("gqlClientFetch", () => {
 					"content-type": "application/json",
 				},
 				signal: expect.any(AbortSignal),
-			}
+			},
 		);
 	});
 
@@ -85,7 +85,7 @@ describe("gqlClientFetch", () => {
 					"content-type": "application/json",
 				},
 				signal: expect.any(AbortSignal),
-			}
+			},
 		);
 	});
 	it("should perform a mutation", async () => {
@@ -98,21 +98,24 @@ describe("gqlClientFetch", () => {
 		expect(mockedFetch).toHaveBeenCalledWith(
 			// This exact URL should be called, note the ?op=myMutation
 			"https://localhost/graphql?op=myMutation",
-			expect.anything() // <- body, method, headers, etc, are tested in the above
+			expect.anything(), // <- body, method, headers, etc, are tested in the above
 		);
 	});
 
-	it("should throw when fetch fails", () => {
+	it("should throw when fetch fails", async () => {
 		fetchMock.mockReject(new Error("Network error"));
 
-		expect(fetcher(query, { myVar: "baz" })).rejects.toThrow("Network error");
+		await expect(fetcher(query, { myVar: "baz" })).rejects.toThrow(
+			"Network error",
+		);
 	});
+
 	it("should fallback to POST when persisted query is not found on the server", async () => {
 		const mockedFetch = fetchMock.mockResponses(
 			JSON.stringify({
 				errors: [{ message: "PersistedQueryNotFound" }],
 			}),
-			responseString
+			responseString,
 		);
 
 		const gqlResponse = await persistedFetcher(query, {
@@ -123,27 +126,30 @@ describe("gqlClientFetch", () => {
 		// Should do two calls, a GET and a POST request
 		expect(mockedFetch).toHaveBeenCalledTimes(2);
 	});
+
 	// This seems as if we test fetch itself but we're actually testing whether the fetcher properly propagates the fetch errors to the package consumers
-	it("should throw when JSON can't be parsed", () => {
+	it("should throw when JSON can't be parsed", async () => {
 		fetchMock.mockResponse("<p>Not JSON</p>");
 
 		const gqlResponse = fetcher(query, { myVar: "baz" });
 
-		expect(gqlResponse).rejects.toThrow();
+		await expect(gqlResponse).rejects.toThrow();
 	});
+
 	it("should not fallback to POST if the persisted query cannot be parsed", async () => {
 		fetchMock.mockResponse("<p>Not JSON</p>");
 
 		const gqlResponse = persistedFetcher(query, { myVar: "baz" });
 
-		expect(gqlResponse).rejects.toThrow();
+		await expect(gqlResponse).rejects.toThrow();
 	});
+
 	it("should not fallback to POST if the persisted query returns an error from the server", async () => {
 		fetchMock.mockReject(new Error("Network error"));
 
 		const gqlResponse = persistedFetcher(query, { myVar: "baz" });
 
-		expect(gqlResponse).rejects.toThrow();
+		await expect(gqlResponse).rejects.toThrow();
 	});
 
 	it("should use time out after 30 seconds by default", async () => {
@@ -190,14 +196,14 @@ describe("gqlClientFetch", () => {
 			{
 				myVar: "baz",
 			},
-			controller.signal
+			controller.signal,
 		);
 
 		expect(fetchMock).toHaveBeenCalledWith(
 			expect.any(String),
 			expect.objectContaining({
 				signal: controller.signal,
-			})
+			}),
 		);
 
 		// It should not try to POST the query if the persisted query cannot be parsed
@@ -215,7 +221,7 @@ describe("gqlClientFetch", () => {
 				headers: {
 					"X-extra-header": "foo",
 				},
-			}
+			},
 		);
 
 		expect(gqlResponse).toEqual(response);
@@ -235,7 +241,7 @@ describe("gqlClientFetch", () => {
 					"x-extra-header": "foo",
 				},
 				signal: expect.any(AbortSignal),
-			}
+			},
 		);
 	});
 });

@@ -1,6 +1,6 @@
-import { DocumentTypeDecoration } from "@graphql-typed-document-node/core";
+import type { DocumentTypeDecoration } from "@graphql-typed-document-node/core";
 import invariant from "tiny-invariant";
-import { getDocumentId, GqlResponse } from "./helpers";
+import { getDocumentId, type GqlResponse } from "./helpers";
 import {
 	createSha256,
 	errorMessage,
@@ -37,7 +37,7 @@ type Options = {
 	 * @param query
 	 */
 	createDocumentId?: <TResult, TVariables>(
-		query: DocumentTypeDecoration<TResult, TVariables>
+		query: DocumentTypeDecoration<TResult, TVariables>,
 	) => string | undefined;
 };
 
@@ -49,7 +49,7 @@ type RequestOptions = {
 export type ClientFetcher = <TResponse, TVariables>(
 	astNode: DocumentTypeDecoration<TResponse, TVariables>,
 	variables?: TVariables,
-	options?: RequestOptions | AbortSignal // Backwards compatibility
+	options?: RequestOptions | AbortSignal, // Backwards compatibility
 ) => Promise<GqlResponse<TResponse>>;
 
 export const initClientFetcher =
@@ -60,9 +60,9 @@ export const initClientFetcher =
 			defaultTimeout = 30000,
 			defaultHeaders = {},
 			createDocumentId = <TResult, TVariables>(
-				query: DocumentTypeDecoration<TResult, TVariables>
+				query: DocumentTypeDecoration<TResult, TVariables>,
 			): string | undefined => getDocumentId(query),
-		}: Options = {}
+		}: Options = {},
 	): ClientFetcher =>
 	/**
 	 * Executes a GraphQL query post request on the client.
@@ -75,7 +75,7 @@ export const initClientFetcher =
 		variables?: TVariables,
 		optionsOrSignal: RequestOptions | AbortSignal = {
 			signal: AbortSignal.timeout(defaultTimeout),
-		} satisfies RequestOptions
+		} satisfies RequestOptions,
 	): Promise<GqlResponse<TResponse>> => {
 		// For backwards compatibility, when options is an AbortSignal we transform
 		// it into a RequestOptions object
@@ -130,7 +130,7 @@ export const initClientFetcher =
 					method: "GET",
 					credentials: "include",
 					signal: options.signal,
-				})
+				}),
 			);
 		}
 
@@ -143,7 +143,7 @@ export const initClientFetcher =
 					body: JSON.stringify({ documentId, query, variables, extensions }),
 					credentials: "include",
 					signal: options.signal,
-				})
+				}),
 			);
 		}
 
@@ -156,12 +156,12 @@ export const initClientFetcher =
  * @param fetchFn
  */
 const parseResponse = async <T>(
-	fetchFn: () => Promise<Response>
+	fetchFn: () => Promise<Response>,
 ): Promise<T> => {
 	const response = await fetchFn();
 	invariant(
 		response.ok,
-		errorMessage(`Response not ok: ${response.status} ${response.statusText}`)
+		errorMessage(`Response not ok: ${response.status} ${response.statusText}`),
 	);
 
 	return (await response.json()) as T;
