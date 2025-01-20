@@ -1,4 +1,4 @@
-import { DocumentTypeDecoration } from "@graphql-typed-document-node/core";
+import type { DocumentTypeDecoration } from "@graphql-typed-document-node/core";
 import { createHash } from "@apollo/utils.createhash";
 
 export const extractOperationName = (query: string) => {
@@ -13,7 +13,7 @@ export const defaultHeaders: Record<string, string> = {
 // mergeHeaders returns a new Headers object which is a combination of the
 // passed headers and default headers if they are not set
 export const mergeHeaders = (
-	headers: Headers | Record<string, string> | undefined
+	headers: Headers | Record<string, string> | undefined,
 ): Headers => {
 	if (!headers) {
 		return new Headers(defaultHeaders);
@@ -32,7 +32,7 @@ export const getQueryType = (query: string) =>
 	query.trim().startsWith("query") ? "query" : "mutation";
 
 export const getDocumentId = <TResult, TVariables>(
-	query: DocumentTypeDecoration<TResult, TVariables>
+	query: DocumentTypeDecoration<TResult, TVariables>,
 ): string | undefined => (query as any)?.["__meta__"]?.["documentId"];
 
 export type GraphQLError = {
@@ -58,21 +58,21 @@ export interface NextFetchRequestConfig {
 export const pruneObject = <T>(object: T): Partial<T> =>
 	JSON.parse(JSON.stringify(object ?? null));
 
-// createSha256 creates a sha256 hash from a message with the same algorithm as Apollo Server, so we know for certain
-// the same hash is used for automatic persisted queries
-export const createSha256 = async (message: string) => {
-	return createHash("sha256").update(message).digest("hex");
-};
+// createSha256 creates a sha256 hash from a message with the same algorithm as
+// Apollo Server, so we know for certain the same hash is used for automatic
+// persisted queries
+export const createSha256 = async (message: string) =>
+	createHash("sha256").update(message).digest("hex");
 
 /**
  * Check if the response has a PersistedQueryNotFound error.
  * @param response Fetch response object
  */
 export const hasPersistedQueryError = (
-	response: GqlResponse<unknown>
+	response: GqlResponse<unknown>,
 ): boolean =>
 	Boolean(
-		response?.errors?.find((item) => item.message === "PersistedQueryNotFound")
+		response?.errors?.find((item) => item.message === "PersistedQueryNotFound"),
 	);
 
 export const errorMessage = (message: string) => `graphql-fetcher: ${message}`;

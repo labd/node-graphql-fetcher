@@ -30,7 +30,7 @@ describe("gqlServerFetch", () => {
 		const gqlResponse = await gqlServerFetch(
 			query,
 			{ myVar: "baz" },
-			{ cache: "force-cache", next: { revalidate: 900 } }
+			{ cache: "force-cache", next: { revalidate: 900 } },
 		);
 
 		const queryString = new URLSearchParams(
@@ -38,7 +38,7 @@ describe("gqlServerFetch", () => {
 				operationName: "myQuery",
 				variables: '{"myVar":"baz"}',
 				extensions: `{"persistedQuery":{"version":1,"sha256Hash":"${hash}"}}`,
-			})
+			}),
 		);
 
 		expect(gqlResponse).toEqual(response);
@@ -53,7 +53,7 @@ describe("gqlServerFetch", () => {
 				cache: "force-cache",
 				next: { revalidate: 900 },
 				signal: expect.any(AbortSignal),
-			}
+			},
 		);
 	});
 
@@ -69,7 +69,7 @@ describe("gqlServerFetch", () => {
 			{ myVar: "baz" },
 			{
 				next: { revalidate: 900 },
-			}
+			},
 		);
 
 		expect(gqlResponse).toEqual(response);
@@ -89,7 +89,7 @@ describe("gqlServerFetch", () => {
 				},
 				next: { revalidate: 900 },
 				signal: expect.any(AbortSignal),
-			}
+			},
 		);
 	});
 
@@ -102,7 +102,7 @@ describe("gqlServerFetch", () => {
 			{ myVar: "baz" },
 			{
 				next: { revalidate: 900 },
-			}
+			},
 		);
 
 		expect(gqlResponse).toEqual(response);
@@ -123,7 +123,7 @@ describe("gqlServerFetch", () => {
 				},
 				next: { revalidate: 900 },
 				signal: expect.any(AbortSignal),
-			}
+			},
 		);
 	});
 
@@ -133,7 +133,7 @@ describe("gqlServerFetch", () => {
 		const gqlResponse = await gqlServerFetch(
 			query,
 			{ myVar: "baz" },
-			{ cache: "no-store", next: { revalidate: undefined } }
+			{ cache: "no-store", next: { revalidate: undefined } },
 		);
 
 		const queryString = new URLSearchParams(
@@ -141,7 +141,7 @@ describe("gqlServerFetch", () => {
 				operationName: "myQuery",
 				variables: '{"myVar":"baz"}',
 				extensions: `{"persistedQuery":{"version":1,"sha256Hash":"${hash}"}}`,
-			})
+			}),
 		);
 
 		expect(gqlResponse).toEqual(response);
@@ -156,7 +156,7 @@ describe("gqlServerFetch", () => {
 				cache: "no-store",
 				next: { revalidate: undefined },
 				signal: expect.any(AbortSignal),
-			}
+			},
 		);
 	});
 
@@ -171,7 +171,7 @@ describe("gqlServerFetch", () => {
 				headers: {
 					"x-custom-header": "foo",
 				},
-			}
+			},
 		);
 
 		const queryString = new URLSearchParams(
@@ -179,7 +179,7 @@ describe("gqlServerFetch", () => {
 				operationName: "myQuery",
 				variables: '{"myVar":"baz"}',
 				extensions: `{"persistedQuery":{"version":1,"sha256Hash":"${hash}"}}`,
-			})
+			}),
 		);
 
 		expect(gqlResponse).toEqual(response);
@@ -195,7 +195,7 @@ describe("gqlServerFetch", () => {
 				cache: "force-cache",
 				next: { revalidate: 900 },
 				signal: expect.any(AbortSignal),
-			}
+			},
 		);
 	});
 
@@ -208,7 +208,7 @@ describe("gqlServerFetch", () => {
 			query,
 			{ myVar: "baz" },
 			// These don't have impact due to dangerouslyDisableCache
-			{ cache: "force-cache", next: { revalidate: 900 } }
+			{ cache: "force-cache", next: { revalidate: 900 } },
 		);
 
 		expect(gqlResponse).toEqual(response);
@@ -234,7 +234,7 @@ describe("gqlServerFetch", () => {
 		fetchMock.mockResponse("<p>Not JSON</p>");
 
 		await expect(() =>
-			gqlServerFetch(query, { myVar: "baz" }, {})
+			gqlServerFetch(query, { myVar: "baz" }, {}),
 		).rejects.toThrow();
 
 		// It should not try to POST the query if the persisted query cannot be parsed
@@ -246,7 +246,7 @@ describe("gqlServerFetch", () => {
 		fetchMock.mockReject(new Error("Network error"));
 
 		await expect(() =>
-			gqlServerFetch(query, { myVar: "baz" }, {})
+			gqlServerFetch(query, { myVar: "baz" }, {}),
 		).rejects.toThrow();
 
 		// It should not try to POST the query if the persisted query cannot be parsed
@@ -297,7 +297,7 @@ describe("gqlServerFetch", () => {
 			expect.any(String),
 			expect.objectContaining({
 				signal: controller.signal,
-			})
+			}),
 		);
 
 		// It should not try to POST the query if the persisted query cannot be parsed

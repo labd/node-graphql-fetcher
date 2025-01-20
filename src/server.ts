@@ -1,10 +1,10 @@
-import { DocumentTypeDecoration } from "@graphql-typed-document-node/core";
+import type { DocumentTypeDecoration } from "@graphql-typed-document-node/core";
 import { SpanStatusCode, trace } from "@opentelemetry/api";
 import invariant from "tiny-invariant";
 import {
 	getDocumentId,
-	GqlResponse,
-	NextFetchRequestConfig,
+	type GqlResponse,
+	type NextFetchRequestConfig,
 	createSha256,
 	defaultHeaders,
 	errorMessage,
@@ -46,7 +46,7 @@ type Options = {
 	 * @param query
 	 */
 	createDocumentId?: <TResult, TVariables>(
-		query: DocumentTypeDecoration<TResult, TVariables>
+		query: DocumentTypeDecoration<TResult, TVariables>,
 	) => string | undefined;
 };
 
@@ -57,7 +57,7 @@ type CacheOptions = {
 
 const tracer = trace.getTracer(
 	"@labdigital/graphql-fetcher",
-	process.env.PACKAGE_VERSION
+	process.env.PACKAGE_VERSION,
 );
 
 export const initServerFetcher =
@@ -68,9 +68,9 @@ export const initServerFetcher =
 			defaultTimeout = 30000,
 			defaultHeaders = {},
 			createDocumentId = <TResult, TVariables>(
-				query: DocumentTypeDecoration<TResult, TVariables>
+				query: DocumentTypeDecoration<TResult, TVariables>,
 			): string | undefined => getDocumentId(query),
-		}: Options = {}
+		}: Options = {},
 	) =>
 	async <TResponse, TVariables>(
 		astNode: DocumentTypeDecoration<TResponse, TVariables>,
@@ -78,7 +78,7 @@ export const initServerFetcher =
 		{ cache, next = {} }: CacheOptions,
 		optionsOrSignal: RequestOptions | AbortSignal = {
 			signal: AbortSignal.timeout(defaultTimeout),
-		} satisfies RequestOptions
+		} satisfies RequestOptions,
 	): Promise<GqlResponse<TResponse>> => {
 		const query = isNode(astNode) ? print(astNode) : astNode.toString();
 
@@ -112,7 +112,7 @@ export const initServerFetcher =
 						url,
 						JSON.stringify({ documentId, operationName, query, variables }),
 						{ ...next, cache: "no-store" },
-						options
+						options,
 					);
 
 					span.end();
@@ -136,7 +136,7 @@ export const initServerFetcher =
 						url,
 						JSON.stringify({ documentId, operationName, query, variables }),
 						{ cache, next },
-						options
+						options,
 					);
 
 					span.end();
@@ -171,7 +171,7 @@ export const initServerFetcher =
 					url,
 					getQueryString(documentId, operationName, variables, extensions),
 					{ cache, next },
-					options
+					options,
 				);
 
 				if (response.errors?.[0]?.message === "PersistedQueryNotFound") {
@@ -185,7 +185,7 @@ export const initServerFetcher =
 							variables,
 						}),
 						{ cache, next },
-						options
+						options,
 					);
 				}
 
@@ -205,7 +205,7 @@ const gqlPost = async (
 	url: string,
 	body: string,
 	{ cache, next }: CacheOptions,
-	options: RequestOptions
+	options: RequestOptions,
 ) => {
 	const headers = {
 		...defaultHeaders,
@@ -227,7 +227,7 @@ const gqlPersistedQuery = async (
 	url: string,
 	queryString: URLSearchParams,
 	{ cache, next }: CacheOptions,
-	options: RequestOptions
+	options: RequestOptions,
 ) => {
 	const headers = {
 		...defaultHeaders,
@@ -248,7 +248,7 @@ const getQueryString = <TVariables>(
 	documentId: string | undefined,
 	operationName: string | undefined,
 	variables: TVariables | undefined,
-	extensions: { persistedQuery: { version: number; sha256Hash: string } }
+	extensions: { persistedQuery: { version: number; sha256Hash: string } },
 ) =>
 	new URLSearchParams(
 		pruneObject({
@@ -256,7 +256,7 @@ const getQueryString = <TVariables>(
 			operationName,
 			variables: JSON.stringify(variables),
 			extensions: JSON.stringify(extensions),
-		})
+		}),
 	);
 
 /**
@@ -267,7 +267,7 @@ const getQueryString = <TVariables>(
 const parseResponse = async (response: Response) => {
 	invariant(
 		response.ok,
-		errorMessage(`Response not ok: ${response.status} ${response.statusText}`)
+		errorMessage(`Response not ok: ${response.status} ${response.statusText}`),
 	);
 
 	return await response.json();
