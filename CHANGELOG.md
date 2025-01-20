@@ -1,5 +1,11 @@
 # @labdigital/react-query-opal
 
+## 1.5.0-next.1
+
+### Patch Changes
+
+- 83ff174: update `@apollo/utils.createhash` to fix issue with require() in nextjs
+
 ## 1.5.0-next.0
 
 ### Minor Changes

@@ -5,6 +5,7 @@
     "@labdigital/graphql-fetcher": "1.4.1"
   },
   "changesets": [
+    "beige-donuts-attend",
     "tough-grapes-hug"
   ]
 }
