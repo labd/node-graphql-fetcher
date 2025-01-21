@@ -1,22 +1,32 @@
 import type { DocumentTypeDecoration } from "@graphql-typed-document-node/core";
-import invariant from "tiny-invariant";
-import { getDocumentId, type GqlResponse } from "./helpers";
+import { print } from "graphql";
+import { isNode } from "graphql/language/ast.js";
 import {
-	createSha256,
+	createRequest,
+	createRequestBody,
+	createRequestURL,
+	isPersistedQuery,
+	type ModeFlags,
+} from "request";
+import invariant from "tiny-invariant";
+import {
 	errorMessage,
-	extractOperationName,
+	getDocumentId,
 	getQueryType,
 	hasPersistedQueryError,
 	mergeHeaders,
+	type GqlResponse,
 } from "./helpers";
-import { print } from "graphql";
-import { isNode } from "graphql/language/ast.js";
 
 type Options = {
 	/**
-	 * Enable use of persisted queries, this will always add a extra roundtrip to the server if queries aren't cacheable
+	 * Enable use of automated persisted queries, this will always add a extra
+	 * roundtrip to the server if queries aren't cacheable
 	 * @default false
 	 */
+	apq?: boolean;
+
+	/** Deprecated: use `apq: <boolean>` */
 	persistedQueries?: boolean;
 
 	/**
@@ -30,6 +40,8 @@ type Options = {
 	 * Default headers to be sent with each request
 	 */
 	defaultHeaders?: Headers | Record<string, string>;
+
+	mode?: ModeFlags
 
 	/**
 	 * Function to customize creating the documentId from a query
@@ -49,84 +61,56 @@ type RequestOptions = {
 export type ClientFetcher = <TResponse, TVariables>(
 	astNode: DocumentTypeDecoration<TResponse, TVariables>,
 	variables?: TVariables,
-	options?: RequestOptions | AbortSignal, // Backwards compatibility
+	options?: RequestOptions,
 ) => Promise<GqlResponse<TResponse>>;
 
 export const initClientFetcher =
 	(
 		endpoint: string,
 		{
+			apq = false,
 			persistedQueries = false,
 			defaultTimeout = 30000,
 			defaultHeaders = {},
-			createDocumentId = <TResult, TVariables>(
-				query: DocumentTypeDecoration<TResult, TVariables>,
-			): string | undefined => getDocumentId(query),
+			mode = "document",
+			createDocumentId = getDocumentId,
 		}: Options = {},
 	): ClientFetcher =>
 	/**
 	 * Executes a GraphQL query post request on the client.
 	 *
-	 * This is the only fetcher that uses user information in the call since all user information is only
-	 * used after rendering the page for caching reasons.
+	 * This is the only fetcher that uses user information in the call since all
+	 * user information is only used after rendering the page for caching reasons.
 	 */
 	async <TResponse, TVariables>(
 		astNode: DocumentTypeDecoration<TResponse, TVariables>,
 		variables?: TVariables,
-		optionsOrSignal: RequestOptions | AbortSignal = {
+		options: RequestOptions = {
 			signal: AbortSignal.timeout(defaultTimeout),
-		} satisfies RequestOptions,
+		},
 	): Promise<GqlResponse<TResponse>> => {
-		// For backwards compatibility, when options is an AbortSignal we transform
-		// it into a RequestOptions object
-		const options: RequestOptions = {};
-		if (optionsOrSignal instanceof AbortSignal) {
-			options.signal = optionsOrSignal;
-		} else {
-			Object.assign(options, optionsOrSignal);
-		}
-
 		// Make sure that we always have a default signal set
 		if (!options.signal) {
 			options.signal = AbortSignal.timeout(defaultTimeout);
 		}
 
 		const query = isNode(astNode) ? print(astNode) : astNode.toString();
-
-		const operationName = extractOperationName(query);
 		const documentId = createDocumentId(astNode);
-
-		let extensions = {};
-		if (persistedQueries) {
-			const hash = await createSha256(query);
-
-			extensions = {
-				persistedQuery: {
-					version: 1,
-					sha256Hash: hash,
-				},
-			};
-		}
-
-		const url = new URL(endpoint);
-		url.searchParams.set("op", operationName ?? "");
+		const request = await createRequest(mode, query, variables, documentId);
 
 		let response: GqlResponse<TResponse> | undefined = undefined;
-
 		const headers = mergeHeaders({ ...defaultHeaders, ...options.headers });
 
+		const queryType = getQueryType(query);
+
+		apq = apq || persistedQueries;
+
 		// For queries we can use GET requests if persisted queries are enabled
-		if (persistedQueries && getQueryType(query) === "query") {
-			url.searchParams.set("extensions", JSON.stringify(extensions));
-			if (variables) {
-				url.searchParams.set("variables", JSON.stringify(variables));
-			}
-			if (documentId) {
-				url.searchParams.set("documentId", documentId);
-			}
+		if (queryType === "query" && (apq || isPersistedQuery(request))) {
+			const url = createRequestURL(endpoint, request);
 			response = await parseResponse<GqlResponse<TResponse>>(() =>
 				fetch(url.toString(), {
-					headers: Object.fromEntries(headers.entries()),
+					headers: headers,
 					method: "GET",
 					credentials: "include",
 					signal: options.signal,
@@ -134,13 +118,21 @@ export const initClientFetcher =
 			);
 		}
 
-		if (!response || hasPersistedQueryError(response)) {
-			// Persisted query not used or found, fall back to POST request and include extension to cache the query on the server
+		// For failed APQ calls or mutations we need to fall back to POST requests
+		if (
+			!response ||
+			(!isPersistedQuery(request) && hasPersistedQueryError(response))
+		) {
+			const url = new URL(endpoint);
+			url.searchParams.append("op", request.operationName);
+
+			// Persisted query not used or found, fall back to POST request and
+			// include extension to cache the query on the server
 			response = await parseResponse<GqlResponse<TResponse>>(() =>
 				fetch(url.toString(), {
-					headers: Object.fromEntries(headers.entries()),
+					headers: headers,
 					method: "POST",
-					body: JSON.stringify({ documentId, query, variables, extensions }),
+					body: createRequestBody(request),
 					credentials: "include",
 					signal: options.signal,
 				}),

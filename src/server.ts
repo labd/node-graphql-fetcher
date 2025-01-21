@@ -5,15 +5,20 @@ import {
 	getDocumentId,
 	type GqlResponse,
 	type NextFetchRequestConfig,
-	createSha256,
-	defaultHeaders,
 	errorMessage,
-	extractOperationName,
 	getQueryType,
-	pruneObject,
+	mergeHeaders,
+	hasPersistedQueryError,
 } from "./helpers";
 import { print } from "graphql";
 import { isNode } from "graphql/language/ast.js";
+import {
+	createRequest,
+	createRequestBody,
+	createRequestURL,
+	type GraphQLRequest,
+	isPersistedQuery,
+} from "./request";
 
 type RequestOptions = {
 	signal?: AbortSignal;
@@ -39,6 +44,13 @@ type Options = {
 	 * Default headers to be sent with each request
 	 */
 	defaultHeaders?: Headers | Record<string, string>;
+
+	/**
+	 * Mode to use for sending requests, persisted means that only the documentId
+	 * will be sent, document means that the full query will be sent and both
+	 * means that the full query and the documentId will be sent
+	 */
+	mode?: "persisted" | "document" | "both";
 
 	/**
 	 * Function to customize creating the documentId from a query
@@ -67,52 +79,42 @@ export const initServerFetcher =
 			dangerouslyDisableCache = false,
 			defaultTimeout = 30000,
 			defaultHeaders = {},
-			createDocumentId = <TResult, TVariables>(
-				query: DocumentTypeDecoration<TResult, TVariables>,
-			): string | undefined => getDocumentId(query),
+			mode = "document",
+			createDocumentId = getDocumentId,
 		}: Options = {},
 	) =>
 	async <TResponse, TVariables>(
 		astNode: DocumentTypeDecoration<TResponse, TVariables>,
 		variables: TVariables,
 		{ cache, next = {} }: CacheOptions,
-		optionsOrSignal: RequestOptions | AbortSignal = {
+		options: RequestOptions = {
 			signal: AbortSignal.timeout(defaultTimeout),
 		} satisfies RequestOptions,
 	): Promise<GqlResponse<TResponse>> => {
 		const query = isNode(astNode) ? print(astNode) : astNode.toString();
 
-		const operationName = extractOperationName(query) || "(GraphQL)";
 		const documentId = createDocumentId(astNode);
-
-		// For backwards compatibility, when options is an AbortSignal we transform
-		// it into a RequestOptions object
-		const options: RequestOptions = {
-			headers: defaultHeaders,
+		const request = await createRequest(mode, query, variables, documentId);
+		const requestOptions: RequestOptions = {
+			signal: options.signal ?? AbortSignal.timeout(defaultTimeout),
+			headers: mergeHeaders({ ...defaultHeaders, ...options.headers }),
 		};
-		if (optionsOrSignal instanceof AbortSignal) {
-			options.signal = optionsOrSignal;
-		} else {
-			Object.assign(options, optionsOrSignal);
-		}
 
-		// Make sure that we always have a default signal set
-		if (!options.signal) {
-			options.signal = AbortSignal.timeout(defaultTimeout);
-		}
-
+		// When cache is disabled we always make a POST request and set the
+		// cache to no-store to prevent any caching
 		if (dangerouslyDisableCache) {
 			// If we force the cache field we shouldn't set revalidate at all, it will
 			// throw a warning otherwise
 			delete next.revalidate;
+			delete request.extensions?.persistedQuery;
 
-			return tracer.startActiveSpan(operationName, async (span) => {
+			return tracer.startActiveSpan(request.operationName, async (span) => {
 				try {
 					const response = await gqlPost(
 						url,
-						JSON.stringify({ documentId, operationName, query, variables }),
+						request,
 						{ ...next, cache: "no-store" },
-						options,
+						requestOptions,
 					);
 
 					span.end();
@@ -127,66 +129,46 @@ export const initServerFetcher =
 			});
 		}
 
-		// Skip persisted queries if operation is a mutation
+		// Skip automatic persisted queries if operation is a mutation
 		const queryType = getQueryType(query);
 		if (queryType === "mutation") {
-			return tracer.startActiveSpan(operationName, async (span) => {
+			return tracer.startActiveSpan(request.operationName, async (span) => {
 				try {
 					const response = await gqlPost(
 						url,
-						JSON.stringify({ documentId, operationName, query, variables }),
+						request,
 						{ cache, next },
-						options,
+						requestOptions,
 					);
 
 					span.end();
 					return response as GqlResponse<TResponse>;
-				} catch (err: any) {
+				} catch (err: unknown) {
 					span.setStatus({
 						code: SpanStatusCode.ERROR,
-						message: err?.message ?? String(err),
+						message: err instanceof Error ? err.message : String(err)
 					});
 					throw err;
 				}
 			});
 		}
 
-		/**
-		 * Replace full queries with generated ID's to reduce bandwidth.
-		 * @see https://www.apollographql.com/docs/react/api/link/persisted-queries/#protocol
-		 *
-		 * Note that these are not the same hashes as the documentId, which is used for allowlisting of query documents
-		 */
-		const extensions = {
-			persistedQuery: {
-				version: 1,
-				sha256Hash: await createSha256(query),
-			},
-		};
-
 		// Otherwise, try to get the cached query
-		return tracer.startActiveSpan(operationName, async (span) => {
+		return tracer.startActiveSpan(request.operationName, async (span) => {
 			try {
 				let response = await gqlPersistedQuery(
 					url,
-					getQueryString(documentId, operationName, variables, extensions),
+					request,
 					{ cache, next },
-					options,
+					requestOptions,
 				);
 
-				if (response.errors?.[0]?.message === "PersistedQueryNotFound") {
-					// If the cached query doesn't exist, fall back to POST request and let the server cache it.
-					response = await gqlPost(
-						url,
-						JSON.stringify({
-							documentId,
-							operationName,
-							query,
-							variables,
-						}),
-						{ cache, next },
-						options,
-					);
+				// If this is not a persisted query, but we tried to use automatic
+				// persisted queries (APQ) then we retry with a POST
+				if (!isPersistedQuery(request) && hasPersistedQueryError(response)) {
+					// If the cached query doesn't exist, fall back to POST request and
+					// let the server cache it.
+					response = await gqlPost(url, request, { cache, next }, requestOptions);
 				}
 
 				span.end();
@@ -201,73 +183,54 @@ export const initServerFetcher =
 		});
 	};
 
-const gqlPost = async (
+const gqlPost = async <TVariables>(
 	url: string,
-	body: string,
+	request: GraphQLRequest<TVariables>,
 	{ cache, next }: CacheOptions,
 	options: RequestOptions,
 ) => {
-	const headers = {
-		...defaultHeaders,
-		...options.headers,
-	};
-	const response = await fetch(url, {
-		headers: headers,
+	const endpoint = new URL(url);
+	endpoint.searchParams.append("op", request.operationName);
+
+	const response = await fetch(endpoint.toString(), {
+		headers: options.headers,
 		method: "POST",
-		body,
+		body: createRequestBody(request),
 		cache,
 		next,
 		signal: options.signal,
 	});
 
-	return parseResponse(response);
+	return parseResponse(request, response);
 };
 
-const gqlPersistedQuery = async (
-	url: string,
-	queryString: URLSearchParams,
+const gqlPersistedQuery = async <TVariables>(
+	endpoint: string,
+	request: GraphQLRequest<TVariables>,
 	{ cache, next }: CacheOptions,
 	options: RequestOptions,
 ) => {
-	const headers = {
-		...defaultHeaders,
-		...options.headers,
-	};
-	const response = await fetch(`${url}?${queryString}`, {
+	const url = createRequestURL(endpoint, request);
+	const response = await fetch(url.toString(), {
 		method: "GET",
-		headers: headers,
+		headers: options.headers,
 		cache,
 		next,
 		signal: options.signal,
 	});
 
-	return parseResponse(response);
+	return parseResponse(request, response);
 };
-
-const getQueryString = <TVariables>(
-	documentId: string | undefined,
-	operationName: string | undefined,
-	variables: TVariables | undefined,
-	extensions: { persistedQuery: { version: number; sha256Hash: string } },
-) =>
-	new URLSearchParams(
-		pruneObject({
-			documentId,
-			operationName,
-			variables: JSON.stringify(variables),
-			extensions: JSON.stringify(extensions),
-		}),
-	);
 
 /**
  * Checks if fetch succeeded and parses the response body
  * @param response Fetch response object
  * @returns GraphQL response body
  */
-const parseResponse = async (response: Response) => {
+const parseResponse = async (request: GraphQLRequest<unknown>, response: Response) => {
 	invariant(
 		response.ok,
-		errorMessage(`Response not ok: ${response.status} ${response.statusText}`),
+		errorMessage(`Response for ${request.operationName} errored: ${response.status} ${response.statusText}`),
 	);
 
 	return await response.json();

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { pruneObject } from "./helpers";
+import { createSha256, pruneObject } from "./helpers";
 import { initServerFetcher } from "./server";
 import { TypedDocumentString } from "./testing";
 
@@ -35,7 +35,7 @@ describe("gqlServerFetch", () => {
 
 		const queryString = new URLSearchParams(
 			pruneObject({
-				operationName: "myQuery",
+				op: "myQuery",
 				variables: '{"myVar":"baz"}',
 				extensions: `{"persistedQuery":{"version":1,"sha256Hash":"${hash}"}}`,
 			}),
@@ -47,9 +47,9 @@ describe("gqlServerFetch", () => {
 			`https://localhost/graphql?${queryString}`,
 			{
 				method: "GET", // <- Note that for persisted queries, the method is 'GET'
-				headers: {
+				headers: new Headers({
 					"Content-Type": "application/json",
-				},
+				}),
 				cache: "force-cache",
 				next: { revalidate: 900 },
 				signal: expect.any(AbortSignal),
@@ -76,17 +76,20 @@ describe("gqlServerFetch", () => {
 		expect(mockedFetch).toHaveBeenCalledTimes(2);
 		expect(mockedFetch).toHaveBeenNthCalledWith(
 			2,
-			"https://localhost/graphql",
+			"https://localhost/graphql?op=myQuery",
 			{
 				method: "POST", // <- Note that when persisting the query, the method is 'POST'
 				body: JSON.stringify({
-					operationName: "myQuery",
 					query: query.toString(),
 					variables: { myVar: "baz" },
+					extensions: { persistedQuery: {
+						version: 1,
+						sha256Hash: await createSha256(query.toString()),
+					}},
 				}),
-				headers: {
+				headers: new Headers({
 					"Content-Type": "application/json",
-				},
+				}),
 				next: { revalidate: 900 },
 				signal: expect.any(AbortSignal),
 			},
@@ -109,18 +112,20 @@ describe("gqlServerFetch", () => {
 		expect(mockedFetch).toHaveBeenCalledTimes(1);
 		expect(mockedFetch).toHaveBeenNthCalledWith(
 			1,
-			"https://localhost/graphql",
+			"https://localhost/graphql?op=myMutation",
 			{
 				method: "POST",
 				body: JSON.stringify({
-					operationName: "myMutation",
 					query: queryMutation.toString(),
 					variables: { myVar: "baz" },
-					extensions: undefined,
+					extensions: { persistedQuery: {
+						version: 1,
+						sha256Hash: await createSha256(queryMutation.toString()),
+					}},
 				}),
-				headers: {
+				headers: new Headers({
 					"Content-Type": "application/json",
-				},
+				}),
 				next: { revalidate: 900 },
 				signal: expect.any(AbortSignal),
 			},
@@ -138,7 +143,7 @@ describe("gqlServerFetch", () => {
 
 		const queryString = new URLSearchParams(
 			pruneObject({
-				operationName: "myQuery",
+				op: "myQuery",
 				variables: '{"myVar":"baz"}',
 				extensions: `{"persistedQuery":{"version":1,"sha256Hash":"${hash}"}}`,
 			}),
@@ -150,9 +155,9 @@ describe("gqlServerFetch", () => {
 			`https://localhost/graphql?${queryString}`,
 			{
 				method: "GET", // <- Note that for persisted queries, the method is 'GET'
-				headers: {
+				headers: new Headers({
 					"Content-Type": "application/json",
-				},
+				}),
 				cache: "no-store",
 				next: { revalidate: undefined },
 				signal: expect.any(AbortSignal),
@@ -176,7 +181,7 @@ describe("gqlServerFetch", () => {
 
 		const queryString = new URLSearchParams(
 			pruneObject({
-				operationName: "myQuery",
+				op: "myQuery",
 				variables: '{"myVar":"baz"}',
 				extensions: `{"persistedQuery":{"version":1,"sha256Hash":"${hash}"}}`,
 			}),
@@ -188,13 +193,13 @@ describe("gqlServerFetch", () => {
 			`https://localhost/graphql?${queryString}`,
 			{
 				method: "GET", // <- Note that for persisted queries, the method is 'GET'
-				headers: {
+				headers: new Headers({
 					"Content-Type": "application/json",
 					"x-custom-header": "foo",
-				},
+				}),
 				cache: "force-cache",
 				next: { revalidate: 900 },
-				signal: expect.any(AbortSignal),
+				signal: expect.any(AbortSignal)
 			},
 		);
 	});
@@ -213,16 +218,15 @@ describe("gqlServerFetch", () => {
 
 		expect(gqlResponse).toEqual(response);
 		expect(mockedFetch).toHaveBeenCalledTimes(1);
-		expect(mockedFetch).toHaveBeenCalledWith("https://localhost/graphql", {
+		expect(mockedFetch).toHaveBeenCalledWith("https://localhost/graphql?op=myQuery", {
 			method: "POST", // <- Note that when caching is disabled, the method is 'POST'
 			body: JSON.stringify({
-				operationName: "myQuery",
 				query: query.toString(),
 				variables: { myVar: "baz" },
 			}),
-			headers: {
+			headers: new Headers({
 				"Content-Type": "application/json",
-			},
+			}),
 			cache: "no-store",
 			signal: expect.any(AbortSignal),
 		});
@@ -291,7 +295,12 @@ describe("gqlServerFetch", () => {
 		fetchMock.mockResponse(successResponse);
 
 		const controller = new AbortController();
-		await gqlServerFetch(query, { myVar: "baz" }, {}, controller.signal);
+		await gqlServerFetch(
+			query,
+			{ myVar: "baz" },
+			{},
+			{ signal: controller.signal },
+		);
 
 		expect(fetchMock).toHaveBeenCalledWith(
 			expect.any(String),

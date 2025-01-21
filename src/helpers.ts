@@ -28,7 +28,7 @@ export const mergeHeaders = (
 	return result;
 };
 
-export const getQueryType = (query: string) =>
+export const getQueryType = (query: string): "query" | "mutation" =>
 	query.trim().startsWith("query") ? "query" : "mutation";
 
 export const getDocumentId = <TResult, TVariables>(
@@ -55,8 +55,17 @@ export interface NextFetchRequestConfig {
 	tags?: string[];
 }
 
-export const pruneObject = <T>(object: T): Partial<T> =>
-	JSON.parse(JSON.stringify(object ?? null));
+export const pruneObject = <T>(object: T): Partial<T> => {
+	const data: Record<string, unknown> = {}
+	for (const key in object) {
+		if (isNotEmpty(object[key])) {
+			data[key] = object[key];
+		}
+	}
+	return JSON.parse(JSON.stringify(data ?? null));
+}
+
+const isNotEmpty = (value: unknown) => value && Object.keys(value).length > 0;
 
 // createSha256 creates a sha256 hash from a message with the same algorithm as
 // Apollo Server, so we know for certain the same hash is used for automatic
