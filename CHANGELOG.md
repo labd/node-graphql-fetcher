@@ -1,5 +1,11 @@
 # @labdigital/react-query-opal
 
+## 2.0.0-next.4
+
+### Patch Changes
+
+- 0fae2a8: Replace `mode` flag via simpler `includeQuery` to indicate if the query should be sent even if there is a documentId available
+
 ## 2.0.0-next.3
 
 ### Major Changes
