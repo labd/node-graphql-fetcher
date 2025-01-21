@@ -1,23 +1,24 @@
 import type { DocumentTypeDecoration } from "@graphql-typed-document-node/core";
 import { createSha256, extractOperationName, pruneObject } from "helpers";
 
-export type ModeFlags = "persisted" | "document" | "both";
-
 export type DocumentIdFn = <TResult, TVariables>(
 	query: DocumentTypeDecoration<TResult, TVariables>,
 ) => string | undefined;
 
 export type GraphQLRequest<TVariables> = {
-	mode: ModeFlags;
 	operationName: string;
 	query: string | undefined;
 	documentId: string | undefined;
 	variables: TVariables | undefined;
 	extensions: Record<string, unknown>;
+	includeQuery: boolean;
 };
 
-export const isPersistedQuery = <T>(request: GraphQLRequest<T>): boolean =>
-	request.mode === "persisted" || request.mode === "both";
+export const isPersistedQuery = <TVariables>(
+	request: GraphQLRequest<TVariables>,
+) => {
+	return request.documentId !== undefined;
+};
 
 export const createRequestSearchParams = <TVariables>(
 	request: GraphQLRequest<TVariables>,
@@ -26,22 +27,18 @@ export const createRequestSearchParams = <TVariables>(
 		op: request.operationName,
 	};
 
-	if (request.mode === "both" || request.mode === "persisted") {
-		if (!request.documentId) {
-			throw new Error("Persisted query mode requires a documentId");
-		}
-		params.documentId = request.documentId;
-	}
-
 	params = {
 		...params,
 		...pruneObject({
+			documentId: request.documentId,
 			variables: isNotEmpty(request.variables)
 				? JSON.stringify(request.variables)
 				: undefined,
-			extensions: isNotEmpty(request.extensions)
-				? JSON.stringify(request.extensions)
-				: undefined,
+			extensions:
+				isNotEmpty(request.extensions) &&
+				(!request.documentId || request.includeQuery)
+					? JSON.stringify(request.extensions)
+					: undefined,
 		}),
 	};
 	return new URLSearchParams(params);
@@ -66,53 +63,40 @@ export const createRequestURL = <TVariables>(
 export const createRequestBody = <TVariables>(
 	request: GraphQLRequest<TVariables>,
 ) => {
-	switch (request.mode) {
-		case "both":
-			return JSON.stringify(
-				pruneObject({
-					documentId: request.documentId,
-					query: request.query,
-					variables: request.variables,
-					extensions: request.extensions,
-				}),
-			);
-		case "document":
-			return JSON.stringify(
-				pruneObject({
-					query: request.query,
-					variables: request.variables,
-					extensions: request.extensions,
-				}),
-			);
-		case "persisted":
-			if (!request.documentId) {
-				throw new Error("Persisted query mode requires a documentId");
-			}
-			return JSON.stringify(
-				pruneObject({
-					documentId: request.documentId,
-					variables: request.variables,
-					extensions: request.extensions,
-				}),
-			);
+	if (!request.documentId || request.includeQuery) {
+		return JSON.stringify(
+			pruneObject({
+				documentId: request.documentId,
+				query: request.query,
+				variables: request.variables,
+				extensions: request.extensions,
+			}),
+		);
 	}
+	return JSON.stringify(
+		pruneObject({
+			documentId: request.documentId,
+			variables: request.variables,
+			extensions: request.extensions,
+		}),
+	);
 };
 
 export const createRequest = async <TVariables>(
-	mode: ModeFlags,
 	query: string,
 	variables: TVariables,
 	documentId?: string,
+	includeQuery?: boolean,
 ): Promise<GraphQLRequest<TVariables>> => {
 	const operationName = extractOperationName(query) || "(GraphQL)";
 
 	const request = {
-		mode,
 		documentId,
 		query,
 		operationName,
 		variables,
 		extensions: {},
+		includeQuery: includeQuery ?? false,
 	};
 
 	/**
@@ -122,7 +106,7 @@ export const createRequest = async <TVariables>(
 	 * Note that these are not the same hashes as the documentId, which is
 	 * used for allowlisting of query documents
 	 */
-	if (mode === "document" || mode === "both") {
+	if (!documentId || request.includeQuery) {
 		request.extensions = {
 			persistedQuery: {
 				version: 1,

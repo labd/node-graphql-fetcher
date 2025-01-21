@@ -6,7 +6,6 @@ import {
 	createRequestBody,
 	createRequestURL,
 	isPersistedQuery,
-	type ModeFlags,
 } from "request";
 import invariant from "tiny-invariant";
 import {
@@ -41,7 +40,10 @@ type Options = {
 	 */
 	defaultHeaders?: Headers | Record<string, string>;
 
-	mode?: ModeFlags;
+	/**
+	 * If the query should always be sent, even if there is a document id
+	 */
+	includeQuery?: boolean;
 
 	/**
 	 * Function to customize creating the documentId from a query
@@ -72,7 +74,7 @@ export const initClientFetcher =
 			persistedQueries = false,
 			defaultTimeout = 30000,
 			defaultHeaders = {},
-			mode = "document",
+			includeQuery = false,
 			createDocumentId = getDocumentId,
 		}: Options = {},
 	): ClientFetcher =>
@@ -96,7 +98,12 @@ export const initClientFetcher =
 
 		const query = isNode(astNode) ? print(astNode) : astNode.toString();
 		const documentId = createDocumentId(astNode);
-		const request = await createRequest(mode, query, variables, documentId);
+		const request = await createRequest(
+			query,
+			variables,
+			documentId,
+			includeQuery,
+		);
 
 		let response: GqlResponse<TResponse> | undefined = undefined;
 		const headers = mergeHeaders({ ...defaultHeaders, ...options.headers });

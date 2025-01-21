@@ -1,11 +1,11 @@
 import { createRequestSearchParams, type GraphQLRequest } from "request";
 import { expect, it } from "vitest";
 
-it.each(["both", "document", "persistent"])(
-	"createRequestURL - mode=%s",
-	(mode) => {
+it.each([true, false])(
+	"createRequestSearchParams - includeQuery=%s",
+	(includeQuery) => {
 		const data = createRequestSearchParams({
-			mode: mode,
+			includeQuery: includeQuery,
 			query: "query { hello }",
 			variables: { name: "world" },
 			operationName: "hello",
@@ -23,42 +23,28 @@ it.each(["both", "document", "persistent"])(
 			result[key] = value;
 		});
 
-		switch (mode) {
-			case "both": {
-				expect(result).toStrictEqual({
-					documentId: "123",
-					op: "hello",
-					variables: '{"name":"world"}',
-					extensions: '{"persistedQuery":{"version":1,"sha256Hash":"123"}}',
-				});
-				break;
-			}
-			case "persisted": {
-				expect(result).toStrictEqual({
-					documentId: "123",
-					op: "hello",
-					variables: '{"name":"world"}',
-					extensions: '{"persistedQuery":{"version":1,"sha256Hash":"123"}}',
-				});
-				break;
-			}
-			case "document": {
-				expect(result).toStrictEqual({
-					op: "hello",
-					variables: '{"name":"world"}',
-					extensions: '{"persistedQuery":{"version":1,"sha256Hash":"123"}}',
-				});
-				break;
-			}
+		if (includeQuery) {
+			expect(result).toStrictEqual({
+				documentId: "123",
+				op: "hello",
+				variables: '{"name":"world"}',
+				extensions: '{"persistedQuery":{"version":1,"sha256Hash":"123"}}',
+			});
+		} else {
+			expect(result).toStrictEqual({
+				documentId: "123",
+				op: "hello",
+				variables: '{"name":"world"}',
+			});
 		}
 	},
 );
 
-it.each(["both", "document", "persistent"])(
-	"createRequestURL - minimal mode=%s",
-	(mode) => {
+it.each([true, false])(
+	"createRequestSearchParams - minimal includeQuery=%s",
+	(includeQuery) => {
 		const data = createRequestSearchParams({
-			mode: mode,
+			includeQuery,
 			query: "query { hello }",
 			variables: {},
 			operationName: "hello",
@@ -70,27 +56,16 @@ it.each(["both", "document", "persistent"])(
 			result[key] = value;
 		});
 
-		switch (mode) {
-			case "both": {
-				expect(result).toStrictEqual({
-					documentId: "123",
-					op: "hello",
-				});
-				break;
-			}
-			case "persisted": {
-				expect(result).toStrictEqual({
-					documentId: "123",
-					op: "hello",
-				});
-				break;
-			}
-			case "document": {
-				expect(result).toStrictEqual({
-					op: "hello",
-				});
-				break;
-			}
+		if (includeQuery) {
+			expect(result).toStrictEqual({
+				documentId: "123",
+				op: "hello",
+			});
+		} else {
+			expect(result).toStrictEqual({
+				documentId: "123",
+				op: "hello",
+			});
 		}
 	},
 );

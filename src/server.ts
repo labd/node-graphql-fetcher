@@ -46,11 +46,9 @@ type Options = {
 	defaultHeaders?: Headers | Record<string, string>;
 
 	/**
-	 * Mode to use for sending requests, persisted means that only the documentId
-	 * will be sent, document means that the full query will be sent and both
-	 * means that the full query and the documentId will be sent
+	 * If the query should always be sent, even if there is a document id
 	 */
-	mode?: "persisted" | "document" | "both";
+	includeQuery?: boolean;
 
 	/**
 	 * Function to customize creating the documentId from a query
@@ -79,7 +77,7 @@ export const initServerFetcher =
 			dangerouslyDisableCache = false,
 			defaultTimeout = 30000,
 			defaultHeaders = {},
-			mode = "document",
+			includeQuery = false,
 			createDocumentId = getDocumentId,
 		}: Options = {},
 	) =>
@@ -94,7 +92,12 @@ export const initServerFetcher =
 		const query = isNode(astNode) ? print(astNode) : astNode.toString();
 
 		const documentId = createDocumentId(astNode);
-		const request = await createRequest(mode, query, variables, documentId);
+		const request = await createRequest(
+			query,
+			variables,
+			documentId,
+			includeQuery,
+		);
 		const requestOptions: RequestOptions = {
 			signal: options.signal ?? AbortSignal.timeout(defaultTimeout),
 			headers: mergeHeaders({ ...defaultHeaders, ...options.headers }),
