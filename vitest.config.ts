@@ -1,7 +1,9 @@
-import { defineConfig } from "vitest/config";
 import path from "node:path";
+import { defineConfig } from "vitest/config";
+import tsconfigPaths from "vite-tsconfig-paths";
 
 export default defineConfig({
+	plugins: [tsconfigPaths()],
 	test: {
 		coverage: {
 			provider: "v8",
@@ -11,11 +13,5 @@ export default defineConfig({
 		},
 		setupFiles: [path.join(__dirname, "vitest.setup.ts")],
 		passWithNoTests: true,
-	},
-
-	resolve: {
-		alias: {
-			"~src": path.join(__dirname, "src"),
-		},
 	},
 });

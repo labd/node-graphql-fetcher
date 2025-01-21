@@ -2,7 +2,7 @@
 	"$schema": "https://json.schemastore.org/tsconfig",
 	"compilerOptions": {
 		"allowJs": true,
-		"baseUrl": "./src/",
+		"baseUrl": "./src",
 		"composite": false,
 		"declaration": false,
 		"declarationMap": false,
@@ -12,7 +12,6 @@
 		"jsx": "react-jsx",
 		"lib": ["DOM", "ESNext", "DOM.Iterable"],
 		"module": "ES2022",
-		"moduleDetection": "force",
 		"moduleResolution": "bundler",
 		"noEmit": true,
 		"outDir": "dist",

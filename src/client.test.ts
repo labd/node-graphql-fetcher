@@ -10,6 +10,7 @@ import {
 import createFetchMock from "vitest-fetch-mock";
 import { initClientFetcher } from "./client";
 import { TypedDocumentString } from "./testing";
+import { createSha256 } from "helpers";
 
 const query = new TypedDocumentString(/* GraphQL */ `
 	query myQuery {
@@ -52,14 +53,21 @@ describe("gqlClientFetch", () => {
 			"https://localhost/graphql?op=myQuery",
 			{
 				// This exact body should be sent:
-				body: '{"query":"\\n\\tquery myQuery {\\n\\t\\tfoo\\n\\t\\tbar\\n\\t}\\n","variables":{"myVar":"baz"},"extensions":{}}',
+				body: JSON.stringify({
+					query: query,
+					variables: { myVar: "baz" },
+					extensions: { persistedQuery: {
+						version: 1,
+						sha256Hash: await createSha256(query.toString()),
+					}},
+				}),
 				// Method was post:
 				method: "POST",
 				// These exact headers should be set:
 				credentials: "include",
-				headers: {
+				headers: new Headers({
 					"content-type": "application/json",
-				},
+				}),
 				signal: expect.any(AbortSignal),
 			},
 		);
@@ -75,15 +83,15 @@ describe("gqlClientFetch", () => {
 		expect(gqlResponse).toEqual(response);
 		expect(mockedFetch).toHaveBeenCalledWith(
 			// When persisted queries are enabled, we suffix all the variables and extensions as search parameters
-			"https://localhost/graphql?op=myQuery&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22e5276e0694f661ef818210402d06d249625ef169a1c2b60383acb2c42d45f7ae%22%7D%7D&variables=%7B%22myVar%22%3A%22baz%22%7D",
+			"https://localhost/graphql?op=myQuery&variables=%7B%22myVar%22%3A%22baz%22%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22e5276e0694f661ef818210402d06d249625ef169a1c2b60383acb2c42d45f7ae%22%7D%7D",
 			{
 				// Query is persisted, uses GET to be cached by CDN
 				method: "GET",
 				// These exact headers should be set:
 				credentials: "include",
-				headers: {
+				headers: new Headers({
 					"content-type": "application/json",
-				},
+				}),
 				signal: expect.any(AbortSignal),
 			},
 		);
@@ -196,7 +204,7 @@ describe("gqlClientFetch", () => {
 			{
 				myVar: "baz",
 			},
-			controller.signal,
+			{ signal: controller.signal },
 		);
 
 		expect(fetchMock).toHaveBeenCalledWith(
@@ -231,15 +239,22 @@ describe("gqlClientFetch", () => {
 			"https://localhost/graphql?op=myQuery",
 			{
 				// This exact body should be sent:
-				body: '{"query":"\\n\\tquery myQuery {\\n\\t\\tfoo\\n\\t\\tbar\\n\\t}\\n","variables":{"myVar":"baz"},"extensions":{}}',
+				body: JSON.stringify({
+					query: query,
+					variables: { myVar: "baz" },
+					extensions: { persistedQuery: {
+						version: 1,
+						sha256Hash: await createSha256(query.toString()),
+					}},
+				}),
 				// Method was post:
 				method: "POST",
 				// These exact headers should be set:
 				credentials: "include",
-				headers: {
-					"content-type": "application/json",
-					"x-extra-header": "foo",
-				},
+				headers: new Headers({
+					"Content-Type": "application/json",
+					"X-extra-header": "foo",
+				}),
 				signal: expect.any(AbortSignal),
 			},
 		);
