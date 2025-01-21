@@ -41,7 +41,7 @@ type Options = {
 	 */
 	defaultHeaders?: Headers | Record<string, string>;
 
-	mode?: ModeFlags
+	mode?: ModeFlags;
 
 	/**
 	 * Function to customize creating the documentId from a query
