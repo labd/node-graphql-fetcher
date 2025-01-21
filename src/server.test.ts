@@ -82,10 +82,12 @@ describe("gqlServerFetch", () => {
 				body: JSON.stringify({
 					query: query.toString(),
 					variables: { myVar: "baz" },
-					extensions: { persistedQuery: {
-						version: 1,
-						sha256Hash: await createSha256(query.toString()),
-					}},
+					extensions: {
+						persistedQuery: {
+							version: 1,
+							sha256Hash: await createSha256(query.toString()),
+						},
+					},
 				}),
 				headers: new Headers({
 					"Content-Type": "application/json",
@@ -118,10 +120,12 @@ describe("gqlServerFetch", () => {
 				body: JSON.stringify({
 					query: queryMutation.toString(),
 					variables: { myVar: "baz" },
-					extensions: { persistedQuery: {
-						version: 1,
-						sha256Hash: await createSha256(queryMutation.toString()),
-					}},
+					extensions: {
+						persistedQuery: {
+							version: 1,
+							sha256Hash: await createSha256(queryMutation.toString()),
+						},
+					},
 				}),
 				headers: new Headers({
 					"Content-Type": "application/json",
@@ -199,7 +203,7 @@ describe("gqlServerFetch", () => {
 				}),
 				cache: "force-cache",
 				next: { revalidate: 900 },
-				signal: expect.any(AbortSignal)
+				signal: expect.any(AbortSignal),
 			},
 		);
 	});
@@ -218,18 +222,21 @@ describe("gqlServerFetch", () => {
 
 		expect(gqlResponse).toEqual(response);
 		expect(mockedFetch).toHaveBeenCalledTimes(1);
-		expect(mockedFetch).toHaveBeenCalledWith("https://localhost/graphql?op=myQuery", {
-			method: "POST", // <- Note that when caching is disabled, the method is 'POST'
-			body: JSON.stringify({
-				query: query.toString(),
-				variables: { myVar: "baz" },
-			}),
-			headers: new Headers({
-				"Content-Type": "application/json",
-			}),
-			cache: "no-store",
-			signal: expect.any(AbortSignal),
-		});
+		expect(mockedFetch).toHaveBeenCalledWith(
+			"https://localhost/graphql?op=myQuery",
+			{
+				method: "POST", // <- Note that when caching is disabled, the method is 'POST'
+				body: JSON.stringify({
+					query: query.toString(),
+					variables: { myVar: "baz" },
+				}),
+				headers: new Headers({
+					"Content-Type": "application/json",
+				}),
+				cache: "no-store",
+				signal: expect.any(AbortSignal),
+			},
+		);
 	});
 
 	// This seems as if we test fetch itself but we're actually testing whether the fetcher properly propagates the fetch errors to the package consumers

@@ -146,7 +146,7 @@ export const initServerFetcher =
 				} catch (err: unknown) {
 					span.setStatus({
 						code: SpanStatusCode.ERROR,
-						message: err instanceof Error ? err.message : String(err)
+						message: err instanceof Error ? err.message : String(err),
 					});
 					throw err;
 				}
@@ -168,7 +168,12 @@ export const initServerFetcher =
 				if (!isPersistedQuery(request) && hasPersistedQueryError(response)) {
 					// If the cached query doesn't exist, fall back to POST request and
 					// let the server cache it.
-					response = await gqlPost(url, request, { cache, next }, requestOptions);
+					response = await gqlPost(
+						url,
+						request,
+						{ cache, next },
+						requestOptions,
+					);
 				}
 
 				span.end();
@@ -227,10 +232,15 @@ const gqlPersistedQuery = async <TVariables>(
  * @param response Fetch response object
  * @returns GraphQL response body
  */
-const parseResponse = async (request: GraphQLRequest<unknown>, response: Response) => {
+const parseResponse = async (
+	request: GraphQLRequest<unknown>,
+	response: Response,
+) => {
 	invariant(
 		response.ok,
-		errorMessage(`Response for ${request.operationName} errored: ${response.status} ${response.statusText}`),
+		errorMessage(
+			`Response for ${request.operationName} errored: ${response.status} ${response.statusText}`,
+		),
 	);
 
 	return await response.json();

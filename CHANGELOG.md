@@ -1,5 +1,11 @@
 # @labdigital/react-query-opal
 
+## 2.0.0-next.3
+
+### Major Changes
+
+- 3dc1d79: Internal refactor to better support persisted operations / trusted documents
+
 ## 1.5.0-next.2
 
 ### Patch Changes

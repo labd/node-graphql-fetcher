@@ -56,10 +56,12 @@ describe("gqlClientFetch", () => {
 				body: JSON.stringify({
 					query: query,
 					variables: { myVar: "baz" },
-					extensions: { persistedQuery: {
-						version: 1,
-						sha256Hash: await createSha256(query.toString()),
-					}},
+					extensions: {
+						persistedQuery: {
+							version: 1,
+							sha256Hash: await createSha256(query.toString()),
+						},
+					},
 				}),
 				// Method was post:
 				method: "POST",
@@ -242,10 +244,12 @@ describe("gqlClientFetch", () => {
 				body: JSON.stringify({
 					query: query,
 					variables: { myVar: "baz" },
-					extensions: { persistedQuery: {
-						version: 1,
-						sha256Hash: await createSha256(query.toString()),
-					}},
+					extensions: {
+						persistedQuery: {
+							version: 1,
+							sha256Hash: await createSha256(query.toString()),
+						},
+					},
 				}),
 				// Method was post:
 				method: "POST",
