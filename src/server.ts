@@ -82,7 +82,7 @@ export const initServerFetcher =
 		astNode: DocumentTypeDecoration<TResponse, TVariables>,
 		variables: TVariables,
 		{ cache, next = {} }: CacheOptions,
-		options: RequestOptions = {}
+		options: RequestOptions = {},
 	): Promise<GqlResponse<TResponse>> => {
 		const query = isNode(astNode) ? print(astNode) : astNode.toString();
 

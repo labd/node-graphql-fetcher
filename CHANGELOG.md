@@ -1,5 +1,11 @@
 # @labdigital/react-query-opal
 
+## 2.0.0-next.5
+
+### Minor Changes
+
+- bd2d55c: Remove the default timeout signal since the presence of the signal disables nextjs request deduplication
+
 ## 2.0.0-next.4
 
 ### Patch Changes
