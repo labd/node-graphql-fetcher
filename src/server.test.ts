@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { createSha256, pruneObject } from "./helpers";
 import { initServerFetcher } from "./server";
 import { TypedDocumentString } from "./testing";
@@ -52,7 +52,6 @@ describe("gqlServerFetch", () => {
 				}),
 				cache: "force-cache",
 				next: { revalidate: 900 },
-				signal: expect.any(AbortSignal),
 			},
 		);
 	});
@@ -93,7 +92,6 @@ describe("gqlServerFetch", () => {
 					"Content-Type": "application/json",
 				}),
 				next: { revalidate: 900 },
-				signal: expect.any(AbortSignal),
 			},
 		);
 	});
@@ -131,7 +129,6 @@ describe("gqlServerFetch", () => {
 					"Content-Type": "application/json",
 				}),
 				next: { revalidate: 900 },
-				signal: expect.any(AbortSignal),
 			},
 		);
 	});
@@ -164,7 +161,6 @@ describe("gqlServerFetch", () => {
 				}),
 				cache: "no-store",
 				next: { revalidate: undefined },
-				signal: expect.any(AbortSignal),
 			},
 		);
 	});
@@ -203,7 +199,6 @@ describe("gqlServerFetch", () => {
 				}),
 				cache: "force-cache",
 				next: { revalidate: 900 },
-				signal: expect.any(AbortSignal),
 			},
 		);
 	});
@@ -234,7 +229,6 @@ describe("gqlServerFetch", () => {
 					"Content-Type": "application/json",
 				}),
 				cache: "no-store",
-				signal: expect.any(AbortSignal),
 			},
 		);
 	});
@@ -264,41 +258,8 @@ describe("gqlServerFetch", () => {
 		expect(fetchMock).toHaveBeenCalledTimes(1);
 	});
 
-	it("should use time out after 30 seconds by default", async () => {
-		const timeoutSpy = vi.spyOn(AbortSignal, "timeout");
-		const gqlServerFetch = initServerFetcher("https://localhost/graphql");
-		fetchMock.mockResponse(successResponse);
-
-		await gqlServerFetch(query, { myVar: "baz" }, {});
-
-		expect(timeoutSpy).toHaveBeenCalledWith(30000);
-
-		// It should not try to POST the query if the persisted query cannot be parsed
-		expect(fetchMock).toHaveBeenCalledTimes(1);
-	});
-
-	it("should use the provided timeout duration", async () => {
-		vi.useFakeTimers();
-		const timeoutSpy = vi.spyOn(AbortSignal, "timeout");
-		const gqlServerFetch = initServerFetcher("https://localhost/graphql", {
-			defaultTimeout: 1,
-		});
-		fetchMock.mockResponse(successResponse);
-
-		await gqlServerFetch(query, { myVar: "baz" }, {});
-
-		vi.runAllTimers();
-
-		expect(timeoutSpy).toHaveBeenCalledWith(1);
-
-		// It should not try to POST the query if the persisted query cannot be parsed
-		expect(fetchMock).toHaveBeenCalledTimes(1);
-	});
-
 	it("should use the provided signal", async () => {
-		const gqlServerFetch = initServerFetcher("https://localhost/graphql", {
-			defaultTimeout: 1,
-		});
+		const gqlServerFetch = initServerFetcher("https://localhost/graphql");
 		fetchMock.mockResponse(successResponse);
 
 		const controller = new AbortController();

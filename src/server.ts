@@ -21,6 +21,11 @@ import {
 } from "./request";
 
 type RequestOptions = {
+	/**
+	 * Pass an AbortSignal to the fetch request. Note that when passing a signal
+	 * to the fetcher, NextJS will disable cache deduplication, so be careful when
+	 * using this option.
+	 */
 	signal?: AbortSignal;
 	headers?: Headers | Record<string, string>;
 };
@@ -32,13 +37,6 @@ type Options = {
 	 * @default false
 	 */
 	dangerouslyDisableCache?: boolean;
-
-	/**
-	 * Sets the default timeout duration in ms after which a request will throw a timeout error
-	 *
-	 * @default 30000
-	 */
-	defaultTimeout?: number;
 
 	/**
 	 * Default headers to be sent with each request
@@ -75,7 +73,6 @@ export const initServerFetcher =
 		url: string,
 		{
 			dangerouslyDisableCache = false,
-			defaultTimeout = 30000,
 			defaultHeaders = {},
 			includeQuery = false,
 			createDocumentId = getDocumentId,
@@ -85,9 +82,7 @@ export const initServerFetcher =
 		astNode: DocumentTypeDecoration<TResponse, TVariables>,
 		variables: TVariables,
 		{ cache, next = {} }: CacheOptions,
-		options: RequestOptions = {
-			signal: AbortSignal.timeout(defaultTimeout),
-		} satisfies RequestOptions,
+		options: RequestOptions = {}
 	): Promise<GqlResponse<TResponse>> => {
 		const query = isNode(astNode) ? print(astNode) : astNode.toString();
 
@@ -99,7 +94,7 @@ export const initServerFetcher =
 			includeQuery,
 		);
 		const requestOptions: RequestOptions = {
-			signal: options.signal ?? AbortSignal.timeout(defaultTimeout),
+			...options,
 			headers: mergeHeaders({ ...defaultHeaders, ...options.headers }),
 		};
 
