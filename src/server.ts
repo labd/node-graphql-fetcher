@@ -43,7 +43,6 @@ type Options = {
 	 */
 	defaultHeaders?: Headers | Record<string, string>;
 
-
 	/**
 	 * Sets the default timeout duration in ms after which a request will throw a timeout error
 	 */
@@ -102,7 +101,10 @@ export const initServerFetcher =
 		);
 		const requestOptions: RequestOptions = {
 			...options,
-			signal: defaultTimeout !== undefined && !options.signal ? AbortSignal.timeout(defaultTimeout) : options.signal,
+			signal:
+				defaultTimeout !== undefined && !options.signal
+					? AbortSignal.timeout(defaultTimeout)
+					: options.signal,
 			headers: mergeHeaders({ ...defaultHeaders, ...options.headers }),
 		};
 
