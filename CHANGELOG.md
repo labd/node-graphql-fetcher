@@ -1,5 +1,19 @@
 # @labdigital/react-query-opal
 
+## 2.0.0
+
+### Minor Changes
+
+- 9de0947: Support GraphQL trusted documents by adding documentId and default headers
+- bd2d55c: Require the default timeout signal to be explicitly set since the presence of
+  the signal disables nextjs request deduplication
+
+### Patch Changes
+
+- 83ff174: update `@apollo/utils.createhash` to fix issue with require() in nextjs
+- 1b03cc8: Resolve import eror when using library by setting `jsx` to `react` in `tsconfig.json`
+- 0fae2a8: Replace `mode` flag via simpler `includeQuery` to indicate if the query should be sent even if there is a documentId available
+
 ## 2.0.0-next.5
 
 ### Minor Changes

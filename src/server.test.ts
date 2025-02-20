@@ -264,8 +264,7 @@ describe("gqlServerFetch", () => {
 		await gqlServerFetch(query, { myVar: "baz" }, {});
 
 		vi.runAllTimers();
-+
-		expect(timeoutSpy).toHaveBeenCalledTimes(1);
+		+expect(timeoutSpy).toHaveBeenCalledTimes(1);
 		expect(timeoutSpy).toHaveBeenCalledWith(1);
 		expect(fetchMock).toHaveBeenCalledTimes(1);
 
@@ -289,7 +288,6 @@ describe("gqlServerFetch", () => {
 				signal: expect.any(AbortSignal),
 			},
 		);
-
 	});
 
 	// This seems as if we test fetch itself but we're actually testing whether the fetcher properly propagates the fetch errors to the package consumers
