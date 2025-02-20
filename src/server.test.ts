@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createSha256, pruneObject } from "./helpers";
 import { initServerFetcher } from "./server";
 import { TypedDocumentString } from "./testing";
@@ -231,6 +231,65 @@ describe("gqlServerFetch", () => {
 				cache: "no-store",
 			},
 		);
+	});
+
+	it("should not use a default timeout duration if not set", async () => {
+		vi.useFakeTimers();
+
+		const timeoutSpy = vi.spyOn(AbortSignal, "timeout");
+
+		const gqlServerFetch = initServerFetcher("https://localhost/graphql");
+
+		fetchMock.mockResponse(successResponse);
+
+		await gqlServerFetch(query, { myVar: "baz" }, {});
+
+		vi.runAllTimers();
+
+		expect(timeoutSpy).toHaveBeenCalledTimes(0);
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+	});
+
+	it("should use the provided timeout duration", async () => {
+		vi.useFakeTimers();
+
+		const timeoutSpy = vi.spyOn(AbortSignal, "timeout");
+
+		const gqlServerFetch = initServerFetcher("https://localhost/graphql", {
+			defaultTimeout: 1,
+		});
+
+		fetchMock.mockResponse(successResponse);
+
+		await gqlServerFetch(query, { myVar: "baz" }, {});
+
+		vi.runAllTimers();
++
+		expect(timeoutSpy).toHaveBeenCalledTimes(1);
+		expect(timeoutSpy).toHaveBeenCalledWith(1);
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+
+		const queryString = new URLSearchParams(
+			pruneObject({
+				op: "myQuery",
+				variables: '{"myVar":"baz"}',
+				extensions: `{"persistedQuery":{"version":1,"sha256Hash":"${hash}"}}`,
+			}),
+		);
+
+		expect(fetchMock).toHaveBeenCalledWith(
+			`https://localhost/graphql?${queryString}`,
+			{
+				method: "GET", // <- Note that for persisted queries, the method is 'GET'
+				headers: new Headers({
+					"Content-Type": "application/json",
+				}),
+				cache: undefined,
+				next: {},
+				signal: expect.any(AbortSignal),
+			},
+		);
+
 	});
 
 	// This seems as if we test fetch itself but we're actually testing whether the fetcher properly propagates the fetch errors to the package consumers

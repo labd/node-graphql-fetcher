@@ -43,6 +43,12 @@ type Options = {
 	 */
 	defaultHeaders?: Headers | Record<string, string>;
 
+
+	/**
+	 * Sets the default timeout duration in ms after which a request will throw a timeout error
+	 */
+	defaultTimeout?: number;
+
 	/**
 	 * If the query should always be sent, even if there is a document id
 	 */
@@ -73,6 +79,7 @@ export const initServerFetcher =
 		url: string,
 		{
 			dangerouslyDisableCache = false,
+			defaultTimeout = undefined,
 			defaultHeaders = {},
 			includeQuery = false,
 			createDocumentId = getDocumentId,
@@ -95,6 +102,7 @@ export const initServerFetcher =
 		);
 		const requestOptions: RequestOptions = {
 			...options,
+			signal: defaultTimeout !== undefined && !options.signal ? AbortSignal.timeout(defaultTimeout) : options.signal,
 			headers: mergeHeaders({ ...defaultHeaders, ...options.headers }),
 		};
 
