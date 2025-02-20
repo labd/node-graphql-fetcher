@@ -2,4 +2,4 @@
 "@labdigital/graphql-fetcher": minor
 ---
 
-Added documentId and default headers
+Support GraphQL trusted documents by adding documentId and default headers

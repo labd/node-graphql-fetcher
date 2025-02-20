@@ -2,4 +2,4 @@
 "@labdigital/graphql-fetcher": patch
 ---
 
-Resolve import erorr when using library
+Resolve import eror when using library by setting `jsx` to `react` in `tsconfig.json`

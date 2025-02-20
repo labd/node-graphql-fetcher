@@ -2,4 +2,5 @@
 "@labdigital/graphql-fetcher": minor
 ---
 
-Remove the default timeout signal since the presence of the signal disables nextjs request deduplication
+Require the default timeout signal to be explicitly set since the presence of
+the signal disables nextjs request deduplication
