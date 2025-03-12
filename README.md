@@ -41,3 +41,20 @@ From node 20.x onwards the WebCrypto API is available on globalThis, versions be
 		globalThis.crypto = require("node:crypto").webcrypto;
 	}
 ```
+
+### Old browsers might need a AbortSignal.timeout() polyfill
+
+Old browsers might not have AbortSignal.timeout() available. We do not support these versions but you can add a polyfill using the following code:
+
+```typescript
+// Polyfill for AbortSignal.timeout() for older browsers
+if (typeof AbortSignal !== "undefined" && !AbortSignal.timeout) {
+	AbortSignal.timeout = function timeout(ms: number) {
+		const controller = new AbortController();
+		setTimeout(() => controller.abort(), ms);
+		return controller.signal;
+	};
+}
+
+export {};
+```
