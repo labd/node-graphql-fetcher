@@ -8,7 +8,7 @@ import {
 	vi,
 } from "vitest";
 import createFetchMock from "vitest-fetch-mock";
-import { initClientFetcher } from "./client";
+import { initClientFetcher, initStrictClientFetcher } from "./client";
 import { TypedDocumentString } from "./testing";
 import { createSha256 } from "helpers";
 
@@ -26,8 +26,34 @@ const mutation = new TypedDocumentString(/* GraphQL */ `
 	}
 `);
 
-const response = { foo: "foo", bar: "bar" };
-const responseString = JSON.stringify(response);
+const data = { foo: "foo", bar: "bar" };
+const response = { data: data, errors: undefined };
+const successResponse = JSON.stringify(response);
+
+const errorResponse = JSON.stringify({
+	data: undefined,
+	errors: [{ message: "PersistedQueryNotFound" }],
+});
+
+const nestedErrorResponse = JSON.stringify({
+	errors: [
+		{
+			message: "Starship not found",
+			locations: [
+				{
+					line: 3,
+					column: 3,
+				},
+			],
+			path: ["secondShip"],
+		},
+	],
+	data: {
+		firstShip: "3001",
+		secondShip: null,
+	},
+});
+
 const fetchMock = createFetchMock(vi);
 
 describe("gqlClientFetch", () => {
@@ -41,7 +67,7 @@ describe("gqlClientFetch", () => {
 	});
 
 	it("should perform a query", async () => {
-		const mockedFetch = fetchMock.mockResponse(responseString);
+		const mockedFetch = fetchMock.mockResponse(successResponse);
 		const gqlResponse = await fetcher(query, {
 			myVar: "baz",
 		});
@@ -76,7 +102,7 @@ describe("gqlClientFetch", () => {
 	});
 
 	it("should perform a persisted query when enabled", async () => {
-		const mockedFetch = fetchMock.mockResponse(responseString);
+		const mockedFetch = fetchMock.mockResponse(successResponse);
 
 		const gqlResponse = await persistedFetcher(query, {
 			myVar: "baz",
@@ -99,7 +125,7 @@ describe("gqlClientFetch", () => {
 		);
 	});
 	it("should perform a mutation", async () => {
-		const mockedFetch = fetchMock.mockResponse(responseString);
+		const mockedFetch = fetchMock.mockResponse(successResponse);
 		const gqlResponse = await fetcher(mutation, {
 			myVar: "baz",
 		});
@@ -121,12 +147,7 @@ describe("gqlClientFetch", () => {
 	});
 
 	it("should fallback to POST when persisted query is not found on the server", async () => {
-		const mockedFetch = fetchMock.mockResponses(
-			JSON.stringify({
-				errors: [{ message: "PersistedQueryNotFound" }],
-			}),
-			responseString,
-		);
+		const mockedFetch = fetchMock.mockResponses(errorResponse, successResponse);
 
 		const gqlResponse = await persistedFetcher(query, {
 			myVar: "baz",
@@ -164,7 +185,7 @@ describe("gqlClientFetch", () => {
 
 	it("should use time out after 30 seconds by default", async () => {
 		const timeoutSpy = vi.spyOn(AbortSignal, "timeout");
-		fetchMock.mockResponse(responseString);
+		fetchMock.mockResponse(successResponse);
 
 		await fetcher(query, {
 			myVar: "baz",
@@ -182,7 +203,7 @@ describe("gqlClientFetch", () => {
 			defaultTimeout: 1,
 		});
 		const timeoutSpy = vi.spyOn(AbortSignal, "timeout");
-		fetchMock.mockResponse(responseString);
+		fetchMock.mockResponse(successResponse);
 
 		await fetcher(query, {
 			myVar: "baz",
@@ -198,7 +219,7 @@ describe("gqlClientFetch", () => {
 
 	it("should use the provided signal", async () => {
 		const fetcher = initClientFetcher("https://localhost/graphql");
-		fetchMock.mockResponse(responseString);
+		fetchMock.mockResponse(successResponse);
 
 		const controller = new AbortController();
 		await fetcher(
@@ -221,7 +242,7 @@ describe("gqlClientFetch", () => {
 	});
 
 	it("should allow passing extra HTTP headers", async () => {
-		const mockedFetch = fetchMock.mockResponse(responseString);
+		const mockedFetch = fetchMock.mockResponse(successResponse);
 		const gqlResponse = await fetcher(
 			query,
 			{
@@ -262,5 +283,35 @@ describe("gqlClientFetch", () => {
 				signal: expect.any(AbortSignal),
 			},
 		);
+	});
+});
+
+describe("initStrictClientFetcher", () => {
+	beforeAll(() => fetchMock.enableMocks());
+	afterAll(() => fetchMock.disableMocks());
+	beforeEach(() => fetchMock.resetMocks());
+
+	it("should return the data directory if no error occurred", async () => {
+		const gqlClientFetch = initStrictClientFetcher("https://localhost/graphql");
+		fetchMock.mockResponse(successResponse);
+		const gqlResponse = await gqlClientFetch(query as any, { myVar: "baz" });
+
+		expect(gqlResponse).toEqual(data);
+	});
+	it("should throw an aggregate error if a generic one occurred", async () => {
+		const gqlClientFetch = initStrictClientFetcher("https://localhost/graphql");
+		fetchMock.mockResponse(errorResponse);
+		const promise = gqlClientFetch(query as any, { myVar: "baz" });
+
+		await expect(promise).rejects.toThrow();
+	});
+	it("should return a response with a nested error thrown", async () => {
+		const gqlClientFetch = initStrictClientFetcher("https://localhost/graphql");
+		fetchMock.mockResponse(nestedErrorResponse);
+		const result = await gqlClientFetch(query as any, { myVar: "baz" });
+
+		expect(result).toBeTruthy();
+		expect(result.firstShip).toBe("3001");
+		expect(() => result.secondShip).toThrowError("Starship not found");
 	});
 });
