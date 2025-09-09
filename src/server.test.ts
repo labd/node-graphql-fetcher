@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createSha256, pruneObject } from "./helpers";
-import { initServerFetcher } from "./server";
+import { initServerFetcher, initStrictServerFetcher } from "./server";
 import { TypedDocumentString } from "./testing";
 
 const query = new TypedDocumentString(`
@@ -17,10 +17,34 @@ const queryMutation = new TypedDocumentString(`
 `);
 
 const hash = "e5276e0694f661ef818210402d06d249625ef169a1c2b60383acb2c42d45f7ae";
-const response = { foo: "foo", bar: "bar" };
+
+const data = { foo: "foo", bar: "bar" };
+const response = { data: data, errors: undefined };
+
 const successResponse = JSON.stringify(response);
+
 const errorResponse = JSON.stringify({
+	data: undefined,
 	errors: [{ message: "PersistedQueryNotFound" }],
+});
+
+const nestedErrorResponse = JSON.stringify({
+	errors: [
+		{
+			message: "Starship not found",
+			locations: [
+				{
+					line: 3,
+					column: 3,
+				},
+			],
+			path: ["secondShip"],
+		},
+	],
+	data: {
+		firstShip: "3001",
+		secondShip: null,
+	},
 });
 
 describe("gqlServerFetch", () => {
@@ -336,5 +360,43 @@ describe("gqlServerFetch", () => {
 
 		// It should not try to POST the query if the persisted query cannot be parsed
 		expect(fetchMock).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe("initStrictServerFetcher", () => {
+	it("should return the data directory if no error occurred", async () => {
+		const gqlServerFetch = initStrictServerFetcher("https://localhost/graphql");
+		fetchMock.mockResponse(successResponse);
+		const gqlResponse = await gqlServerFetch(
+			query as any,
+			{ myVar: "baz" },
+			{ cache: "force-cache", next: { revalidate: 900 } },
+		);
+
+		expect(gqlResponse).toEqual(data);
+	});
+	it("should throw an aggregate error if a generic one occurred", async () => {
+		const gqlServerFetch = initStrictServerFetcher("https://localhost/graphql");
+		fetchMock.mockResponse(errorResponse);
+		const promise = gqlServerFetch(
+			query as any,
+			{ myVar: "baz" },
+			{ cache: "force-cache", next: { revalidate: 900 } },
+		);
+
+		await expect(promise).rejects.toThrow();
+	});
+	it("should return a response with a nested error thrown", async () => {
+		const gqlServerFetch = initStrictServerFetcher("https://localhost/graphql");
+		fetchMock.mockResponse(nestedErrorResponse);
+		const result = await gqlServerFetch(
+			query as any,
+			{ myVar: "baz" },
+			{ cache: "force-cache", next: { revalidate: 900 } },
+		);
+
+		expect(result).toBeTruthy();
+		expect(result.firstShip).toBe("3001");
+		expect(() => result.secondShip).toThrowError("Starship not found");
 	});
 });

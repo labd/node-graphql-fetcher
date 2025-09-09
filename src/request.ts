@@ -1,10 +1,4 @@
-import type { DocumentTypeDecoration } from "@graphql-typed-document-node/core";
 import { createSha256, extractOperationName, pruneObject } from "helpers";
-
-export type DocumentIdFn = <TResult, TVariables>(
-	query: DocumentTypeDecoration<TResult, TVariables>,
-) => string | undefined;
-
 export type GraphQLRequest<TVariables> = {
 	operationName: string;
 	query: string | undefined;

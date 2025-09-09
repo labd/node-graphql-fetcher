@@ -10,7 +10,7 @@ import {
 	mergeHeaders,
 	hasPersistedQueryError,
 } from "./helpers";
-import { print } from "graphql";
+import { print, type GraphQLError } from "graphql";
 import { isNode } from "graphql/language/ast.js";
 import {
 	createRequest,
@@ -19,6 +19,7 @@ import {
 	type GraphQLRequest,
 	isPersistedQuery,
 } from "./request";
+import { toe } from "graphql-toe";
 
 type RequestOptions = {
 	/**
@@ -72,6 +73,32 @@ const tracer = trace.getTracer(
 	"@labdigital/graphql-fetcher",
 	process.env.PACKAGE_VERSION,
 );
+
+// Wraps the initServerFetcher function, which returns the result wrapped in the graphql-toe library. This will throw
+// an error if a field is used that had an entry in the error response array
+export const initStrictServerFetcher = (url: string, options: Options = {}) => {
+	const fetcher = initServerFetcher(url, options);
+	return async <TResponse extends Record<string, any>, TVariables>(
+		astNode: DocumentTypeDecoration<TResponse, TVariables>,
+		variables: TVariables,
+		cacheOptions: CacheOptions,
+		requestOptions: RequestOptions = {},
+	): Promise<TResponse> => {
+		const response = await fetcher(
+			astNode,
+			variables,
+			cacheOptions,
+			requestOptions,
+		);
+
+		return toe<TResponse>(
+			response as unknown as {
+				data?: TResponse | null | undefined;
+				errors?: readonly GraphQLError[] | undefined;
+			},
+		);
+	};
+};
 
 export const initServerFetcher =
 	(
