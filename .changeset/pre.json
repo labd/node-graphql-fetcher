@@ -4,5 +4,7 @@
   "initialVersions": {
     "@labdigital/graphql-fetcher": "2.0.0"
   },
-  "changesets": []
+  "changesets": [
+    "rich-ants-shop"
+  ]
 }
