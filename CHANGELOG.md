@@ -1,5 +1,11 @@
 # @labdigital/react-query-opal
 
+## 3.0.0-beta.0
+
+### Major Changes
+
+- a301cab: Remove deprecated is "isPersistedQuery" and make apq explicitly opt in
+
 ## 2.0.0
 
 ### Minor Changes
