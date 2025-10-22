@@ -25,9 +25,6 @@ type Options = {
 	 */
 	apq?: boolean;
 
-	/** Deprecated: use `apq: <boolean>` */
-	persistedQueries?: boolean;
-
 	/**
 	 * Sets the default timeout duration in ms after which a request will throw a timeout error
 	 *
@@ -71,7 +68,6 @@ export const initClientFetcher =
 		endpoint: string,
 		{
 			apq = false,
-			persistedQueries = false,
 			defaultTimeout = 30000,
 			defaultHeaders = {},
 			includeQuery = false,
@@ -110,10 +106,8 @@ export const initClientFetcher =
 
 		const queryType = getQueryType(query);
 
-		apq = apq || persistedQueries;
-
 		// For queries we can use GET requests if persisted queries are enabled
-		if (queryType === "query" && (apq || isPersistedQuery(request))) {
+		if (queryType === "query" && apq) {
 			const url = createRequestURL(endpoint, request);
 			response = await parseResponse<GqlResponse<TResponse>>(() =>
 				fetch(url.toString(), {
