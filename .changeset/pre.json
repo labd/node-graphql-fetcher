@@ -1,0 +1,8 @@
+{
+  "mode": "pre",
+  "tag": "beta",
+  "initialVersions": {
+    "@labdigital/graphql-fetcher": "2.0.0"
+  },
+  "changesets": []
+}
