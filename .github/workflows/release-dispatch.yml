@@ -59,13 +59,8 @@ jobs:
       - name: Set up Node.js
         uses: labd/gh-actions-typescript/pnpm-install@main
 
-      - name: Create and publish versions
-        uses: changesets/action@v1
-        with:
-          title: "Release new version"
-          commit: "update version"
-          publish: pnpm publish:ci
-          version: pnpm publish:version
+      - name: Publish
+        run: pnpm run publish:ci
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
