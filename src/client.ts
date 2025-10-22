@@ -1,5 +1,5 @@
 import type { DocumentTypeDecoration } from "@graphql-typed-document-node/core";
-import { print } from "graphql";
+import { type GraphQLError, print } from "graphql";
 import { isNode } from "graphql/language/ast.js";
 import {
 	createRequest,
@@ -16,6 +16,7 @@ import {
 	mergeHeaders,
 	type GqlResponse,
 } from "./helpers";
+import { toe } from "graphql-toe";
 
 type Options = {
 	/**
@@ -58,6 +59,38 @@ type Options = {
 type RequestOptions = {
 	signal?: AbortSignal;
 	headers?: Headers | Record<string, string>;
+};
+
+export type StrictClientFetcher = <
+	TResponse extends Record<string, any>,
+	TVariables,
+>(
+	astNode: DocumentTypeDecoration<TResponse, TVariables>,
+	variables?: TVariables,
+	options?: RequestOptions,
+) => Promise<TResponse>;
+
+// Wraps the initServerFetcher function, which returns the result wrapped in the graphql-toe library. This will throw
+// an error if a field is used that had an entry in the error response array
+export const initStrictClientFetcher = (
+	url: string,
+	options: Options = {},
+): StrictClientFetcher => {
+	const fetcher = initClientFetcher(url, options);
+	return async <TResponse extends Record<string, any>, TVariables>(
+		astNode: DocumentTypeDecoration<TResponse, TVariables>,
+		variables?: TVariables,
+		options?: RequestOptions,
+	): Promise<TResponse> => {
+		const response = await fetcher(astNode, variables, options);
+
+		return toe<TResponse>(
+			response as unknown as {
+				data?: TResponse | null | undefined;
+				errors?: readonly GraphQLError[] | undefined;
+			},
+		);
+	};
 };
 
 export type ClientFetcher = <TResponse, TVariables>(
