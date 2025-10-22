@@ -37,7 +37,7 @@ describe("gqlClientFetch", () => {
 
 	const fetcher = initClientFetcher("https://localhost/graphql");
 	const persistedFetcher = initClientFetcher("https://localhost/graphql", {
-		persistedQueries: true,
+		apq: true,
 	});
 
 	it("should perform a query", async () => {
