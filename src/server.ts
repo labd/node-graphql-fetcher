@@ -32,6 +32,12 @@ type RequestOptions = {
 
 type Options = {
 	/**
+	 * Enable use of automated persisted queries, this will always add a extra
+	 * roundtrip to the server if queries aren't cacheable
+	 * @default false
+	 */
+	apq?: boolean;
+	/**
 	 * Disables all forms of caching for the fetcher, use only in development
 	 *
 	 * @default false
@@ -81,6 +87,7 @@ export const initServerFetcher =
 			defaultTimeout = undefined,
 			defaultHeaders = {},
 			includeQuery = false,
+			apq = false,
 			createDocumentId = getDocumentId,
 		}: Options = {},
 	) =>
@@ -137,63 +144,36 @@ export const initServerFetcher =
 			});
 		}
 
-		// Skip automatic persisted queries if operation is a mutation
 		const queryType = getQueryType(query);
-		if (queryType === "mutation") {
-			return tracer.startActiveSpan(request.operationName, async (span) => {
-				try {
-					const response = await gqlPost(
-						url,
-						request,
-						{ cache, next },
-						requestOptions,
-					);
-
-					span.end();
-					return response as GqlResponse<TResponse>;
-				} catch (err: unknown) {
-					span.setStatus({
-						code: SpanStatusCode.ERROR,
-						message: err instanceof Error ? err.message : String(err),
-					});
-					throw err;
-				}
-			});
+		if (!apq) {
+			return post<TResponse, TVariables>(
+				request,
+				url,
+				cache,
+				next,
+				requestOptions,
+			);
 		}
 
-		// Otherwise, try to get the cached query
-		return tracer.startActiveSpan(request.operationName, async (span) => {
-			try {
-				let response = await gqlPersistedQuery(
-					url,
-					request,
-					{ cache, next },
-					requestOptions,
-				);
+		// if apq is enabled, only queries are converted into get calls
+		// https://www.apollographql.com/docs/apollo-server/performance/apq#using-get-requests-with-apq-on-a-cdn
+		if (queryType === "mutation") {
+			return post<TResponse, TVariables>(
+				request,
+				url,
+				cache,
+				next,
+				requestOptions,
+			);
+		}
 
-				// If this is not a persisted query, but we tried to use automatic
-				// persisted queries (APQ) then we retry with a POST
-				if (!isPersistedQuery(request) && hasPersistedQueryError(response)) {
-					// If the cached query doesn't exist, fall back to POST request and
-					// let the server cache it.
-					response = await gqlPost(
-						url,
-						request,
-						{ cache, next },
-						requestOptions,
-					);
-				}
-
-				span.end();
-				return response as GqlResponse<TResponse>;
-			} catch (err: any) {
-				span.setStatus({
-					code: SpanStatusCode.ERROR,
-					message: err?.message ?? String(err),
-				});
-				throw err;
-			}
-		});
+		return get<TResponse, TVariables>(
+			request,
+			url,
+			cache,
+			next,
+			requestOptions,
+		);
 	};
 
 const gqlPost = async <TVariables>(
@@ -204,7 +184,6 @@ const gqlPost = async <TVariables>(
 ) => {
 	const endpoint = new URL(url);
 	endpoint.searchParams.append("op", request.operationName);
-
 	const response = await fetch(endpoint.toString(), {
 		headers: options.headers,
 		method: "POST",
@@ -253,3 +232,66 @@ const parseResponse = async (
 
 	return await response.json();
 };
+function get<TResponse, TVariables>(
+	request: GraphQLRequest<TVariables>,
+	url: string,
+	cache: RequestCache | undefined,
+	next: NextFetchRequestConfig,
+	requestOptions: RequestOptions,
+): GqlResponse<TResponse> | PromiseLike<GqlResponse<TResponse>> {
+	return tracer.startActiveSpan(request.operationName, async (span) => {
+		try {
+			let response = await gqlPersistedQuery(
+				url,
+				request,
+				{ cache, next },
+				requestOptions,
+			);
+
+			// If this is not a persisted query, but we tried to use automatic
+			// persisted queries (APQ) then we retry with a POST
+			if (!isPersistedQuery(request) && hasPersistedQueryError(response)) {
+				// If the cached query doesn't exist, fall back to POST request and
+				// let the server cache it.
+				response = await gqlPost(url, request, { cache, next }, requestOptions);
+			}
+
+			span.end();
+			return response as GqlResponse<TResponse>;
+		} catch (err: any) {
+			span.setStatus({
+				code: SpanStatusCode.ERROR,
+				message: err?.message ?? String(err),
+			});
+			throw err;
+		}
+	});
+}
+
+function post<TResponse, TVariables>(
+	request: GraphQLRequest<TVariables>,
+	url: string,
+	cache: RequestCache | undefined,
+	next: NextFetchRequestConfig,
+	requestOptions: RequestOptions,
+): GqlResponse<TResponse> | PromiseLike<GqlResponse<TResponse>> {
+	return tracer.startActiveSpan(request.operationName, async (span) => {
+		try {
+			const response = await gqlPost(
+				url,
+				request,
+				{ cache, next },
+				requestOptions,
+			);
+
+			span.end();
+			return response as GqlResponse<TResponse>;
+		} catch (err: unknown) {
+			span.setStatus({
+				code: SpanStatusCode.ERROR,
+				message: err instanceof Error ? err.message : String(err),
+			});
+			throw err;
+		}
+	});
+}

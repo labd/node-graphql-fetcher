@@ -25,7 +25,9 @@ const errorResponse = JSON.stringify({
 
 describe("gqlServerFetch", () => {
 	it("should fetch a persisted query", async () => {
-		const gqlServerFetch = initServerFetcher("https://localhost/graphql");
+		const gqlServerFetch = initServerFetcher("https://localhost/graphql", {
+			apq: true,
+		});
 		const mockedFetch = fetchMock.mockResponse(successResponse);
 		const gqlResponse = await gqlServerFetch(
 			query,
@@ -57,7 +59,9 @@ describe("gqlServerFetch", () => {
 	});
 
 	it("should persist the query if it wasn't persisted yet", async () => {
-		const gqlServerFetch = initServerFetcher("https://localhost/graphql");
+		const gqlServerFetch = initServerFetcher("https://localhost/graphql", {
+			apq: true,
+		});
 		// Mock server saying: 'PersistedQueryNotFound'
 		const mockedFetch = fetchMock
 			.mockResponseOnce(errorResponse)
@@ -134,7 +138,9 @@ describe("gqlServerFetch", () => {
 	});
 
 	it("should fetch a persisted query without revalidate", async () => {
-		const gqlServerFetch = initServerFetcher("https://localhost/graphql");
+		const gqlServerFetch = initServerFetcher("https://localhost/graphql", {
+			apq: true,
+		});
 		const mockedFetch = fetchMock.mockResponse(successResponse);
 		const gqlResponse = await gqlServerFetch(
 			query,
@@ -166,7 +172,9 @@ describe("gqlServerFetch", () => {
 	});
 
 	it("should fetch a with custom headers", async () => {
-		const gqlServerFetch = initServerFetcher("https://localhost/graphql");
+		const gqlServerFetch = initServerFetcher("https://localhost/graphql", {
+			apq: true,
+		});
 		const mockedFetch = fetchMock.mockResponse(successResponse);
 		const gqlResponse = await gqlServerFetch(
 			query,
@@ -257,6 +265,7 @@ describe("gqlServerFetch", () => {
 
 		const gqlServerFetch = initServerFetcher("https://localhost/graphql", {
 			defaultTimeout: 1,
+			apq: true,
 		});
 
 		fetchMock.mockResponse(successResponse);
@@ -337,4 +346,43 @@ describe("gqlServerFetch", () => {
 		// It should not try to POST the query if the persisted query cannot be parsed
 		expect(fetchMock).toHaveBeenCalledTimes(1);
 	});
+});
+
+it("should skip persisted queries if operation apq is disabled", async () => {
+	const gqlServerFetch = initServerFetcher("https://localhost/graphql", {
+		apq: false,
+	});
+	const mockedFetch = fetchMock.mockResponseOnce(successResponse);
+
+	const gqlResponse = await gqlServerFetch(
+		query,
+		{ myVar: "baz" },
+		{
+			next: { revalidate: 900 },
+		},
+	);
+
+	expect(gqlResponse).toEqual(response);
+	expect(mockedFetch).toHaveBeenCalledTimes(1);
+	expect(mockedFetch).toHaveBeenNthCalledWith(
+		1,
+		"https://localhost/graphql?op=myQuery",
+		{
+			method: "POST",
+			body: JSON.stringify({
+				query: query.toString(),
+				variables: { myVar: "baz" },
+				extensions: {
+					persistedQuery: {
+						version: 1,
+						sha256Hash: await createSha256(query.toString()),
+					},
+				},
+			}),
+			headers: new Headers({
+				"Content-Type": "application/json",
+			}),
+			next: { revalidate: 900 },
+		},
+	);
 });

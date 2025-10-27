@@ -1,5 +1,17 @@
 # @labdigital/react-query-opal
 
+## 3.0.0-beta.1
+
+### Minor Changes
+
+- Make apq opt in for the server side client instead of opt in
+
+## 3.0.0-beta.0
+
+### Major Changes
+
+- ff7f7e4: Remove deprecated is "isPersistedQuery" and make apq explicitly opt in
+
 ## 2.0.0
 
 ### Minor Changes
