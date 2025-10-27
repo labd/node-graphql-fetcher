@@ -5,6 +5,7 @@
     "@labdigital/graphql-fetcher": "2.0.0"
   },
   "changesets": [
-    "rich-ants-shop"
+    "rich-ants-shop",
+    "sharp-radios-relate"
   ]
 }

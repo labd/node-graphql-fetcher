@@ -1,5 +1,11 @@
 # @labdigital/react-query-opal
 
+## 3.0.0-beta.1
+
+### Minor Changes
+
+- Make apq opt in for the server side client instead of opt in
+
 ## 3.0.0-beta.0
 
 ### Major Changes
