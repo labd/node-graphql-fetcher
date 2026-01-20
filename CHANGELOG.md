@@ -1,5 +1,15 @@
 # @labdigital/react-query-opal
 
+## 2.1.0
+
+### Minor Changes
+
+- 612b90d: Added strict server and client fetchers that use the graphql errors array and magic getters to determine if fields failed to fetch
+
+### Patch Changes
+
+- d7d5337: Updated dependencies
+
 ## 2.0.0
 
 ### Minor Changes
