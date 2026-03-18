@@ -6,10 +6,10 @@ export class TypedDocumentString<TResult, TVariables>
 {
 	__apiType?: DocumentTypeDecoration<TResult, TVariables>["__apiType"];
 
-	constructor(value: string,
+	constructor(
+		value: string,
 		public __meta__?: Record<string, any>,
 	) {
 		super(value);
 	}
-
 }

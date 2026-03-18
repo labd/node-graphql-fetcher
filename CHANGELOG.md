@@ -1,5 +1,11 @@
 # @labdigital/react-query-opal
 
+## 2.2.0
+
+### Minor Changes
+
+- 1bf53a8: Update dependencies
+
 ## 2.1.0
 
 ### Minor Changes

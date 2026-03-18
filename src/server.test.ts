@@ -1,4 +1,12 @@
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import {
+	afterAll,
+	afterEach,
+	beforeAll,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vitest";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import { createSha256, pruneObject } from "./helpers";
@@ -294,20 +302,17 @@ describe("gqlServerFetch", () => {
 
 		expect(gqlResponse).toEqual(response);
 		expect(spy).toHaveBeenCalledTimes(1);
-		expect(spy).toHaveBeenCalledWith(
-			"https://localhost/graphql?op=myQuery",
-			{
-				method: "POST", // <- Note that when caching is disabled, the method is 'POST'
-				body: JSON.stringify({
-					query: query.toString(),
-					variables: { myVar: "baz" },
-				}),
-				headers: new Headers({
-					"Content-Type": "application/json",
-				}),
-				cache: "no-store",
-			},
-		);
+		expect(spy).toHaveBeenCalledWith("https://localhost/graphql?op=myQuery", {
+			method: "POST", // <- Note that when caching is disabled, the method is 'POST'
+			body: JSON.stringify({
+				query: query.toString(),
+				variables: { myVar: "baz" },
+			}),
+			headers: new Headers({
+				"Content-Type": "application/json",
+			}),
+			cache: "no-store",
+		});
 	});
 
 	it("should not use a default timeout duration if not set", async () => {
@@ -397,9 +402,7 @@ describe("gqlServerFetch", () => {
 	it("should throw when the server response is not ok", async () => {
 		const spy = spyOnFetch();
 		server.use(
-			http.get("https://localhost/graphql", () =>
-				HttpResponse.error(),
-			),
+			http.get("https://localhost/graphql", () => HttpResponse.error()),
 		);
 
 		const gqlServerFetch = initServerFetcher("https://localhost/graphql");
