@@ -6,7 +6,7 @@
 		"defaultBranch": "main"
 	},
 	"files": {
-		"ignore": ["*.json"]
+		"includes": ["**"]
 	},
 	"formatter": {
 		"enabled": true,
@@ -27,10 +27,10 @@
 				"noUnusedVariables": "off"
 			},
 			"suspicious": {
-				"noConsoleLog": "error",
 				"noEvolvingTypes": "error",
 				"noExplicitAny": "off",
-				"useErrorMessage": "error"
+				"useErrorMessage": "error",
+				"noConsole": { "level": "error", "options": { "allow": ["log"] } }
 			},
 			"performance": {
 				"noDelete": "off"
@@ -47,11 +47,10 @@
 					}
 				},
 				"useTemplate": "off",
-				"useThrowOnlyError": "error"
-			},
-			"nursery": {
+				"useThrowOnlyError": "error",
 				"noNestedTernary": "warn"
-			}
+			},
+			"nursery": {}
 		}
 	}
 }

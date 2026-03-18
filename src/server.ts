@@ -117,7 +117,10 @@ export const initServerFetcher =
 		{ cache, next = {} }: CacheOptions,
 		options: RequestOptions = {},
 	): Promise<GqlResponse<TResponse>> => {
-		const query = isNode(astNode) ? print(astNode) : astNode.toString();
+		const query =
+			isNode(astNode) && astNode.kind === "Document"
+				? print(astNode)
+				: astNode.toString();
 
 		const documentId = createDocumentId(astNode);
 		const request = await createRequest(
