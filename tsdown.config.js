@@ -9,6 +9,7 @@ export default defineConfig([
 		sourcemap: true,
 		format: ["esm", "cjs"],
 		outDir: "dist",
+		fixedExtension: false,
 	},
 	{
 		entry: ["src/server.ts"],
@@ -18,5 +19,6 @@ export default defineConfig([
 		sourcemap: true,
 		format: ["esm", "cjs"],
 		outDir: "dist",
+		fixedExtension: false,
 	},
 ]);
