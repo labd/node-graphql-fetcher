@@ -167,9 +167,7 @@ describe("gqlClientFetch", () => {
 
 	it("should throw when fetch fails", async () => {
 		server.use(
-			http.post("https://localhost/graphql", () =>
-				HttpResponse.error(),
-			),
+			http.post("https://localhost/graphql", () => HttpResponse.error()),
 		);
 
 		await expect(fetcher(query, { myVar: "baz" })).rejects.toThrow();
@@ -224,9 +222,7 @@ describe("gqlClientFetch", () => {
 
 	it("should not fallback to POST if the persisted query returns an error from the server", async () => {
 		server.use(
-			http.get("https://localhost/graphql", () =>
-				HttpResponse.error(),
-			),
+			http.get("https://localhost/graphql", () => HttpResponse.error()),
 		);
 
 		const gqlResponse = persistedFetcher(query, { myVar: "baz" });

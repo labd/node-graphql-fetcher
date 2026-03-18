@@ -141,7 +141,7 @@ export const initClientFetcher =
 			includeQuery,
 		);
 
-		let response: GqlResponse<TResponse> | undefined ;
+		let response: GqlResponse<TResponse> | undefined;
 		const headers = mergeHeaders({ ...defaultHeaders, ...options.headers });
 
 		const queryType = getQueryType(query);
