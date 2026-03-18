@@ -1,5 +1,11 @@
 # @labdigital/react-query-opal
 
+## 2.2.1
+
+### Patch Changes
+
+- 931a46b: Resolve ESM import issue
+
 ## 2.2.0
 
 ### Minor Changes
