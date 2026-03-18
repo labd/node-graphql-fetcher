@@ -1,13 +1,14 @@
 import {
 	afterAll,
+	afterEach,
 	beforeAll,
-	beforeEach,
 	describe,
 	expect,
 	it,
 	vi,
 } from "vitest";
-import createFetchMock from "vitest-fetch-mock";
+import { http, HttpResponse } from "msw";
+import { setupServer } from "msw/node";
 import { initClientFetcher, initStrictClientFetcher } from "./client";
 import { TypedDocumentString } from "./testing";
 import { createSha256 } from "helpers";
@@ -54,27 +55,42 @@ const nestedErrorResponse = JSON.stringify({
 	},
 });
 
-const fetchMock = createFetchMock(vi);
+const server = setupServer();
+let fetchSpy: ReturnType<typeof vi.spyOn>;
+
+beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
+afterEach(() => {
+	server.resetHandlers();
+	fetchSpy?.mockRestore();
+});
+afterAll(() => server.close());
+
+function spyOnFetch() {
+	fetchSpy = vi.spyOn(globalThis, "fetch");
+	return fetchSpy;
+}
 
 describe("gqlClientFetch", () => {
-	beforeAll(() => fetchMock.enableMocks());
-	afterAll(() => fetchMock.disableMocks());
-	beforeEach(() => fetchMock.resetMocks());
-
 	const fetcher = initClientFetcher("https://localhost/graphql");
 	const persistedFetcher = initClientFetcher("https://localhost/graphql", {
 		persistedQueries: true,
 	});
 
 	it("should perform a query", async () => {
-		const mockedFetch = fetchMock.mockResponse(successResponse);
+		const spy = spyOnFetch();
+		server.use(
+			http.post("https://localhost/graphql", () =>
+				HttpResponse.text(successResponse),
+			),
+		);
+
 		const gqlResponse = await fetcher(query, {
 			myVar: "baz",
 		});
 
 		expect(gqlResponse).toEqual(response);
 
-		expect(mockedFetch).toHaveBeenCalledWith(
+		expect(spy).toHaveBeenCalledWith(
 			// This exact URL should be called, note the ?op=myQuery.
 			"https://localhost/graphql?op=myQuery",
 			{
@@ -102,14 +118,19 @@ describe("gqlClientFetch", () => {
 	});
 
 	it("should perform a persisted query when enabled", async () => {
-		const mockedFetch = fetchMock.mockResponse(successResponse);
+		const spy = spyOnFetch();
+		server.use(
+			http.get("https://localhost/graphql", () =>
+				HttpResponse.text(successResponse),
+			),
+		);
 
 		const gqlResponse = await persistedFetcher(query, {
 			myVar: "baz",
 		});
 
 		expect(gqlResponse).toEqual(response);
-		expect(mockedFetch).toHaveBeenCalledWith(
+		expect(spy).toHaveBeenCalledWith(
 			// When persisted queries are enabled, we suffix all the variables and extensions as search parameters
 			"https://localhost/graphql?op=myQuery&variables=%7B%22myVar%22%3A%22baz%22%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22e5276e0694f661ef818210402d06d249625ef169a1c2b60383acb2c42d45f7ae%22%7D%7D",
 			{
@@ -125,13 +146,19 @@ describe("gqlClientFetch", () => {
 		);
 	});
 	it("should perform a mutation", async () => {
-		const mockedFetch = fetchMock.mockResponse(successResponse);
+		const spy = spyOnFetch();
+		server.use(
+			http.post("https://localhost/graphql", () =>
+				HttpResponse.text(successResponse),
+			),
+		);
+
 		const gqlResponse = await fetcher(mutation, {
 			myVar: "baz",
 		});
 		expect(gqlResponse).toEqual(response);
 
-		expect(mockedFetch).toHaveBeenCalledWith(
+		expect(spy).toHaveBeenCalledWith(
 			// This exact URL should be called, note the ?op=myMutation
 			"https://localhost/graphql?op=myMutation",
 			expect.anything(), // <- body, method, headers, etc, are tested in the above
@@ -139,15 +166,27 @@ describe("gqlClientFetch", () => {
 	});
 
 	it("should throw when fetch fails", async () => {
-		fetchMock.mockReject(new Error("Network error"));
-
-		await expect(fetcher(query, { myVar: "baz" })).rejects.toThrow(
-			"Network error",
+		server.use(
+			http.post("https://localhost/graphql", () =>
+				HttpResponse.error(),
+			),
 		);
+
+		await expect(fetcher(query, { myVar: "baz" })).rejects.toThrow();
 	});
 
 	it("should fallback to POST when persisted query is not found on the server", async () => {
-		const mockedFetch = fetchMock.mockResponses(errorResponse, successResponse);
+		const spy = spyOnFetch();
+		let callCount = 0;
+		server.use(
+			http.get("https://localhost/graphql", () => {
+				callCount++;
+				return HttpResponse.text(errorResponse);
+			}),
+			http.post("https://localhost/graphql", () =>
+				HttpResponse.text(successResponse),
+			),
+		);
 
 		const gqlResponse = await persistedFetcher(query, {
 			myVar: "baz",
@@ -155,12 +194,16 @@ describe("gqlClientFetch", () => {
 
 		expect(gqlResponse).toEqual(response);
 		// Should do two calls, a GET and a POST request
-		expect(mockedFetch).toHaveBeenCalledTimes(2);
+		expect(spy).toHaveBeenCalledTimes(2);
 	});
 
 	// This seems as if we test fetch itself but we're actually testing whether the fetcher properly propagates the fetch errors to the package consumers
 	it("should throw when JSON can't be parsed", async () => {
-		fetchMock.mockResponse("<p>Not JSON</p>");
+		server.use(
+			http.post("https://localhost/graphql", () =>
+				HttpResponse.text("<p>Not JSON</p>"),
+			),
+		);
 
 		const gqlResponse = fetcher(query, { myVar: "baz" });
 
@@ -168,7 +211,11 @@ describe("gqlClientFetch", () => {
 	});
 
 	it("should not fallback to POST if the persisted query cannot be parsed", async () => {
-		fetchMock.mockResponse("<p>Not JSON</p>");
+		server.use(
+			http.get("https://localhost/graphql", () =>
+				HttpResponse.text("<p>Not JSON</p>"),
+			),
+		);
 
 		const gqlResponse = persistedFetcher(query, { myVar: "baz" });
 
@@ -176,7 +223,11 @@ describe("gqlClientFetch", () => {
 	});
 
 	it("should not fallback to POST if the persisted query returns an error from the server", async () => {
-		fetchMock.mockReject(new Error("Network error"));
+		server.use(
+			http.get("https://localhost/graphql", () =>
+				HttpResponse.error(),
+			),
+		);
 
 		const gqlResponse = persistedFetcher(query, { myVar: "baz" });
 
@@ -185,7 +236,12 @@ describe("gqlClientFetch", () => {
 
 	it("should use time out after 30 seconds by default", async () => {
 		const timeoutSpy = vi.spyOn(AbortSignal, "timeout");
-		fetchMock.mockResponse(successResponse);
+		const spy = spyOnFetch();
+		server.use(
+			http.post("https://localhost/graphql", () =>
+				HttpResponse.text(successResponse),
+			),
+		);
 
 		await fetcher(query, {
 			myVar: "baz",
@@ -194,7 +250,7 @@ describe("gqlClientFetch", () => {
 		expect(timeoutSpy).toHaveBeenCalledWith(30000);
 
 		// It should not try to POST the query if the persisted query cannot be parsed
-		expect(fetchMock).toHaveBeenCalledTimes(1);
+		expect(spy).toHaveBeenCalledTimes(1);
 	});
 
 	it("should use the provided timeout duration", async () => {
@@ -203,7 +259,12 @@ describe("gqlClientFetch", () => {
 			defaultTimeout: 1,
 		});
 		const timeoutSpy = vi.spyOn(AbortSignal, "timeout");
-		fetchMock.mockResponse(successResponse);
+		const spy = spyOnFetch();
+		server.use(
+			http.post("https://localhost/graphql", () =>
+				HttpResponse.text(successResponse),
+			),
+		);
 
 		await fetcher(query, {
 			myVar: "baz",
@@ -214,12 +275,17 @@ describe("gqlClientFetch", () => {
 		expect(timeoutSpy).toHaveBeenCalledWith(1);
 
 		// It should not try to POST the query if the persisted query cannot be parsed
-		expect(fetchMock).toHaveBeenCalledTimes(1);
+		expect(spy).toHaveBeenCalledTimes(1);
 	});
 
 	it("should use the provided signal", async () => {
 		const fetcher = initClientFetcher("https://localhost/graphql");
-		fetchMock.mockResponse(successResponse);
+		const spy = spyOnFetch();
+		server.use(
+			http.post("https://localhost/graphql", () =>
+				HttpResponse.text(successResponse),
+			),
+		);
 
 		const controller = new AbortController();
 		await fetcher(
@@ -230,7 +296,7 @@ describe("gqlClientFetch", () => {
 			{ signal: controller.signal },
 		);
 
-		expect(fetchMock).toHaveBeenCalledWith(
+		expect(spy).toHaveBeenCalledWith(
 			expect.any(String),
 			expect.objectContaining({
 				signal: controller.signal,
@@ -238,11 +304,17 @@ describe("gqlClientFetch", () => {
 		);
 
 		// It should not try to POST the query if the persisted query cannot be parsed
-		expect(fetchMock).toHaveBeenCalledTimes(1);
+		expect(spy).toHaveBeenCalledTimes(1);
 	});
 
 	it("should allow passing extra HTTP headers", async () => {
-		const mockedFetch = fetchMock.mockResponse(successResponse);
+		const spy = spyOnFetch();
+		server.use(
+			http.post("https://localhost/graphql", () =>
+				HttpResponse.text(successResponse),
+			),
+		);
+
 		const gqlResponse = await fetcher(
 			query,
 			{
@@ -257,7 +329,7 @@ describe("gqlClientFetch", () => {
 
 		expect(gqlResponse).toEqual(response);
 
-		expect(mockedFetch).toHaveBeenCalledWith(
+		expect(spy).toHaveBeenCalledWith(
 			// This exact URL should be called, note the ?op=myQuery.
 			"https://localhost/graphql?op=myQuery",
 			{
@@ -287,27 +359,38 @@ describe("gqlClientFetch", () => {
 });
 
 describe("initStrictClientFetcher", () => {
-	beforeAll(() => fetchMock.enableMocks());
-	afterAll(() => fetchMock.disableMocks());
-	beforeEach(() => fetchMock.resetMocks());
-
 	it("should return the data directory if no error occurred", async () => {
+		server.use(
+			http.post("https://localhost/graphql", () =>
+				HttpResponse.text(successResponse),
+			),
+		);
+
 		const gqlClientFetch = initStrictClientFetcher("https://localhost/graphql");
-		fetchMock.mockResponse(successResponse);
 		const gqlResponse = await gqlClientFetch(query as any, { myVar: "baz" });
 
 		expect(gqlResponse).toEqual(data);
 	});
 	it("should throw an aggregate error if a generic one occurred", async () => {
+		server.use(
+			http.post("https://localhost/graphql", () =>
+				HttpResponse.text(errorResponse),
+			),
+		);
+
 		const gqlClientFetch = initStrictClientFetcher("https://localhost/graphql");
-		fetchMock.mockResponse(errorResponse);
 		const promise = gqlClientFetch(query as any, { myVar: "baz" });
 
 		await expect(promise).rejects.toThrow();
 	});
 	it("should return a response with a nested error thrown", async () => {
+		server.use(
+			http.post("https://localhost/graphql", () =>
+				HttpResponse.text(nestedErrorResponse),
+			),
+		);
+
 		const gqlClientFetch = initStrictClientFetcher("https://localhost/graphql");
-		fetchMock.mockResponse(nestedErrorResponse);
 		const result = await gqlClientFetch(query as any, { myVar: "baz" });
 
 		expect(result).toBeTruthy();

@@ -129,7 +129,10 @@ export const initClientFetcher =
 			options.signal = AbortSignal.timeout(defaultTimeout);
 		}
 
-		const query = isNode(astNode) ? print(astNode) : astNode.toString();
+		const query =
+			isNode(astNode) && astNode.kind === "Document"
+				? print(astNode)
+				: astNode.toString();
 		const documentId = createDocumentId(astNode);
 		const request = await createRequest(
 			query,
@@ -138,7 +141,7 @@ export const initClientFetcher =
 			includeQuery,
 		);
 
-		let response: GqlResponse<TResponse> | undefined = undefined;
+		let response: GqlResponse<TResponse> | undefined ;
 		const headers = mergeHeaders({ ...defaultHeaders, ...options.headers });
 
 		const queryType = getQueryType(query);
