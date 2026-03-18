@@ -19,7 +19,7 @@ importers:
         version: 1.9.0
       graphql:
         specifier: '>= 16.6.0'
-        version: 16.12.0
+        version: 16.13.1
       graphql-toe:
         specifier: ^1.0.0
         version: 1.0.0
@@ -30,12 +30,12 @@ importers:
         specifier: '>= 18.2.0'
         version: 19.2.3(react@19.2.3)
       tiny-invariant:
-        specifier: 1.3.1
-        version: 1.3.1
+        specifier: 1.3.3
+        version: 1.3.3
     devDependencies:
       '@apollo/server-gateway-interface':
         specifier: 2.0.0
-        version: 2.0.0(graphql@16.12.0)
+        version: 2.0.0(graphql@16.13.1)
       '@biomejs/biome':
         specifier: ^2.4.7
         version: 2.4.7
@@ -44,7 +44,7 @@ importers:
         version: 2.30.0(@types/node@20.19.30)
       '@graphql-typed-document-node/core':
         specifier: 3.2.0
-        version: 3.2.0(graphql@16.12.0)
+        version: 3.2.0(graphql@16.13.1)
       '@types/node':
         specifier: 20.19.30
         version: 20.19.30
@@ -53,10 +53,10 @@ importers:
         version: 19.2.14
       '@vitest/coverage-v8':
         specifier: 4.1.0
-        version: 4.1.0(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@20.19.30)(msw@2.12.12(@types/node@20.19.30)(typescript@5.9.3))(vite@6.4.1(@types/node@20.19.30)(yaml@2.5.0)))
+        version: 4.1.0(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@20.19.30)(msw@2.12.13(@types/node@20.19.30)(typescript@5.9.3))(vite@6.4.1(@types/node@20.19.30)(yaml@2.5.0)))
       msw:
         specifier: ^2.12.12
-        version: 2.12.12(@types/node@20.19.30)(typescript@5.9.3)
+        version: 2.12.13(@types/node@20.19.30)(typescript@5.9.3)
       tsdown:
         specifier: ^0.21.4
         version: 0.21.4(typescript@5.9.3)
@@ -68,7 +68,7 @@ importers:
         version: 6.1.1(typescript@5.9.3)(vite@6.4.1(@types/node@20.19.30)(yaml@2.5.0))
       vitest:
         specifier: 4.1.0
-        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@20.19.30)(msw@2.12.12(@types/node@20.19.30)(typescript@5.9.3))(vite@6.4.1(@types/node@20.19.30)(yaml@2.5.0))
+        version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@20.19.30)(msw@2.12.13(@types/node@20.19.30)(typescript@5.9.3))(vite@6.4.1(@types/node@20.19.30)(yaml@2.5.0))
 
 packages:
 
@@ -1141,8 +1141,8 @@ packages:
   graphql-toe@1.0.0:
     resolution: {integrity: sha512-gu2GOt9oHaj3EAWfwYVBOeYMcvLLzeYxzCL7IBcjCwE0LRTAP4FpFnjLHMzoIKyZaRFqgqBAulKRvEfhQ7dHag==}
 
-  graphql@16.12.0:
-    resolution: {integrity: sha512-DKKrynuQRne0PNpEbzuEdHlYOMksHSUI8Zc9Unei5gTsMNA2/vMpoMz/yKba50pejK56qj98qM0SjYxAKi13gQ==}
+  graphql@16.13.1:
+    resolution: {integrity: sha512-gGgrVCoDKlIZ8fIqXBBb0pPKqDgki0Z/FSKNiQzSGj2uEYHr1tq5wmBegGwJx6QB5S5cM0khSBpi/JFHMCvsmQ==}
     engines: {node: ^12.22.0 || ^14.16.0 || ^16.0.0 || >=17.0.0}
 
   has-flag@4.0.0:
@@ -1307,8 +1307,8 @@ packages:
   ms@2.1.3:
     resolution: {integrity: sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==}
 
-  msw@2.12.12:
-    resolution: {integrity: sha512-u5tmUr6cO29q61vhOR6CDzasMvq7/WqI4eej6HmyIwjVsTpObtoAin5ac3iwK2vU/9eEo1P4FdY/0tsz7C/4fw==}
+  msw@2.12.13:
+    resolution: {integrity: sha512-9CV2mXT9+z0J26MQDfEZZkj/psJ5Er/w0w+t95FWdaGH/DTlhNZBx8vBO5jSYv8AZEnl3ouX+AaTT68KXdAIag==}
     engines: {node: '>=18'}
     hasBin: true
     peerDependencies:
@@ -1395,8 +1395,8 @@ packages:
     resolution: {integrity: sha512-/+5VFTchJDoVj3bhoqi6UeymcD00DAwb1nJwamzPvHEszJ4FpF6SNNbUbOS8yI56qHzdV8eK0qEfOSiodkTdxg==}
     engines: {node: '>= 0.4'}
 
-  postcss@8.5.6:
-    resolution: {integrity: sha512-3Ybi1tAuwAP9s0r1UQ2J4n5Y0G05bJkpUIO0/bI9MhwmD70S5aTWbXGBwxHrelT+XM1k6dM0pk+SwNkpTRN7Pg==}
+  postcss@8.5.8:
+    resolution: {integrity: sha512-OW/rX8O/jXnm82Ey1k44pObPtdblfiuWnrd8X7GJ7emImCOstunGbXUpp7HdBrFQX6rJzn3sPT397Wp5aCwCHg==}
     engines: {node: ^10 || ^12 || >=14}
 
   prettier@2.8.8:
@@ -1570,8 +1570,8 @@ packages:
     resolution: {integrity: sha512-wK0Ri4fOGjv/XPy8SBHZChl8CM7uMc5VML7SqiQ0zG7+J5Vr+RMQDoHa2CNT6KHUnTGIXH34UDMkPzAUyapBZg==}
     engines: {node: '>=8'}
 
-  tiny-invariant@1.3.1:
-    resolution: {integrity: sha512-AD5ih2NlSssTCwsMznbvwMZpJ1cbhkGd2uueNxzv2jDlEeZdU04JQfRnggJQ8DrcVBGjAsCKwFBbDlVNtEMlzw==}
+  tiny-invariant@1.3.3:
+    resolution: {integrity: sha512-+FbBPE1o9QAYvviau/qC5SE3caw21q3xkvWKBtja5vgqOWIHHJ3ioaq1VPfn/Szqctz2bU/oYeKd9/z5BL+PVg==}
 
   tinybench@2.9.0:
     resolution: {integrity: sha512-0+DUvqWMValLmha6lr4kD8iAMK1HzV0/aKnCtWb9v9641TnP/MFb7Pc2bxoxQjTXAErryXVgUOfv2YqNllqGeg==}
@@ -1828,13 +1828,13 @@ snapshots:
       '@types/long': 4.0.2
       long: 4.0.0
 
-  '@apollo/server-gateway-interface@2.0.0(graphql@16.12.0)':
+  '@apollo/server-gateway-interface@2.0.0(graphql@16.13.1)':
     dependencies:
       '@apollo/usage-reporting-protobuf': 4.1.1
       '@apollo/utils.fetcher': 3.1.0
       '@apollo/utils.keyvaluecache': 4.0.0
       '@apollo/utils.logger': 3.0.0
-      graphql: 16.12.0
+      graphql: 16.13.1
 
   '@apollo/usage-reporting-protobuf@4.1.1':
     dependencies:
@@ -2167,9 +2167,9 @@ snapshots:
   '@esbuild/win32-x64@0.25.12':
     optional: true
 
-  '@graphql-typed-document-node/core@3.2.0(graphql@16.12.0)':
+  '@graphql-typed-document-node/core@3.2.0(graphql@16.13.1)':
     dependencies:
-      graphql: 16.12.0
+      graphql: 16.13.1
 
   '@inquirer/ansi@1.0.2': {}
 
@@ -2460,7 +2460,7 @@ snapshots:
 
   '@types/statuses@2.0.6': {}
 
-  '@vitest/coverage-v8@4.1.0(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@20.19.30)(msw@2.12.12(@types/node@20.19.30)(typescript@5.9.3))(vite@6.4.1(@types/node@20.19.30)(yaml@2.5.0)))':
+  '@vitest/coverage-v8@4.1.0(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@20.19.30)(msw@2.12.13(@types/node@20.19.30)(typescript@5.9.3))(vite@6.4.1(@types/node@20.19.30)(yaml@2.5.0)))':
     dependencies:
       '@bcoe/v8-coverage': 1.0.2
       '@vitest/utils': 4.1.0
@@ -2472,7 +2472,7 @@ snapshots:
       obug: 2.1.1
       std-env: 4.0.0
       tinyrainbow: 3.1.0
-      vitest: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@20.19.30)(msw@2.12.12(@types/node@20.19.30)(typescript@5.9.3))(vite@6.4.1(@types/node@20.19.30)(yaml@2.5.0))
+      vitest: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@20.19.30)(msw@2.12.13(@types/node@20.19.30)(typescript@5.9.3))(vite@6.4.1(@types/node@20.19.30)(yaml@2.5.0))
 
   '@vitest/expect@4.1.0':
     dependencies:
@@ -2483,13 +2483,13 @@ snapshots:
       chai: 6.2.2
       tinyrainbow: 3.1.0
 
-  '@vitest/mocker@4.1.0(msw@2.12.12(@types/node@20.19.30)(typescript@5.9.3))(vite@6.4.1(@types/node@20.19.30)(yaml@2.5.0))':
+  '@vitest/mocker@4.1.0(msw@2.12.13(@types/node@20.19.30)(typescript@5.9.3))(vite@6.4.1(@types/node@20.19.30)(yaml@2.5.0))':
     dependencies:
       '@vitest/spy': 4.1.0
       estree-walker: 3.0.3
       magic-string: 0.30.21
     optionalDependencies:
-      msw: 2.12.12(@types/node@20.19.30)(typescript@5.9.3)
+      msw: 2.12.13(@types/node@20.19.30)(typescript@5.9.3)
       vite: 6.4.1(@types/node@20.19.30)(yaml@2.5.0)
 
   '@vitest/pretty-format@4.1.0':
@@ -2788,7 +2788,7 @@ snapshots:
 
   graphql-toe@1.0.0: {}
 
-  graphql@16.12.0: {}
+  graphql@16.13.1: {}
 
   has-flag@4.0.0: {}
 
@@ -2919,14 +2919,14 @@ snapshots:
 
   ms@2.1.3: {}
 
-  msw@2.12.12(@types/node@20.19.30)(typescript@5.9.3):
+  msw@2.12.13(@types/node@20.19.30)(typescript@5.9.3):
     dependencies:
       '@inquirer/confirm': 5.1.21(@types/node@20.19.30)
       '@mswjs/interceptors': 0.41.3
       '@open-draft/deferred-promise': 2.2.0
       '@types/statuses': 2.0.6
       cookie: 1.1.1
-      graphql: 16.12.0
+      graphql: 16.13.1
       headers-polyfill: 4.0.3
       is-node-process: 1.2.0
       outvariant: 1.4.3
@@ -2994,7 +2994,7 @@ snapshots:
 
   possible-typed-array-names@1.1.0: {}
 
-  postcss@8.5.6:
+  postcss@8.5.8:
     dependencies:
       nanoid: 3.3.11
       picocolors: 1.1.1
@@ -3179,7 +3179,7 @@ snapshots:
 
   term-size@2.2.1: {}
 
-  tiny-invariant@1.3.1: {}
+  tiny-invariant@1.3.3: {}
 
   tinybench@2.9.0: {}
 
@@ -3290,7 +3290,7 @@ snapshots:
       esbuild: 0.25.12
       fdir: 6.5.0(picomatch@4.0.3)
       picomatch: 4.0.3
-      postcss: 8.5.6
+      postcss: 8.5.8
       rollup: 4.59.0
       tinyglobby: 0.2.15
     optionalDependencies:
@@ -3298,10 +3298,10 @@ snapshots:
       fsevents: 2.3.3
       yaml: 2.5.0
 
-  vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@20.19.30)(msw@2.12.12(@types/node@20.19.30)(typescript@5.9.3))(vite@6.4.1(@types/node@20.19.30)(yaml@2.5.0)):
+  vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@20.19.30)(msw@2.12.13(@types/node@20.19.30)(typescript@5.9.3))(vite@6.4.1(@types/node@20.19.30)(yaml@2.5.0)):
     dependencies:
       '@vitest/expect': 4.1.0
-      '@vitest/mocker': 4.1.0(msw@2.12.12(@types/node@20.19.30)(typescript@5.9.3))(vite@6.4.1(@types/node@20.19.30)(yaml@2.5.0))
+      '@vitest/mocker': 4.1.0(msw@2.12.13(@types/node@20.19.30)(typescript@5.9.3))(vite@6.4.1(@types/node@20.19.30)(yaml@2.5.0))
       '@vitest/pretty-format': 4.1.0
       '@vitest/runner': 4.1.0
       '@vitest/snapshot': 4.1.0
