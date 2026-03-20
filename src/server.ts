@@ -11,7 +11,6 @@ import {
 	hasPersistedQueryError,
 } from "./helpers";
 import { print, type GraphQLError } from "graphql";
-import { isNode } from "graphql/language/ast.js";
 import {
 	createRequest,
 	createRequestBody,
@@ -118,9 +117,9 @@ export const initServerFetcher =
 		options: RequestOptions = {},
 	): Promise<GqlResponse<TResponse>> => {
 		const query =
-			isNode(astNode) && astNode.kind === "Document"
-				? print(astNode)
-				: astNode.toString();
+			typeof astNode === "string" || astNode instanceof String
+				? astNode.toString()
+				: print(astNode as Parameters<typeof print>[0]);
 
 		const documentId = createDocumentId(astNode);
 		const request = await createRequest(
