@@ -1,5 +1,11 @@
 # @labdigital/react-query-opal
 
+## 2.2.2
+
+### Patch Changes
+
+- 29fb19d: Fix query serialization producing `[object Object]` instead of the actual query string
+
 ## 2.2.1
 
 ### Patch Changes
