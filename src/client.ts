@@ -46,6 +46,11 @@ type Options = {
 	includeQuery?: boolean;
 
 	/**
+	 * Default credentials to be sent with each request
+	 */
+	defaultCredentials?: RequestCredentials;
+
+	/**
 	 * Function to customize creating the documentId from a query
 	 *
 	 * @param query
@@ -107,6 +112,7 @@ export const initClientFetcher =
 			defaultTimeout = 30000,
 			defaultHeaders = {},
 			includeQuery = false,
+			defaultCredentials = "include",
 			createDocumentId = getDocumentId,
 		}: Options = {},
 	): ClientFetcher =>
@@ -154,7 +160,7 @@ export const initClientFetcher =
 				fetch(url.toString(), {
 					headers: headers,
 					method: "GET",
-					credentials: "include",
+					credentials: defaultCredentials,
 					signal: options.signal,
 				}),
 			);
@@ -175,7 +181,7 @@ export const initClientFetcher =
 					headers: headers,
 					method: "POST",
 					body: createRequestBody(request),
-					credentials: "include",
+					credentials: defaultCredentials,
 					signal: options.signal,
 				}),
 			);

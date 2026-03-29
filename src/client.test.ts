@@ -1,3 +1,4 @@
+import { createSha256 } from "helpers";
 import {
 	afterAll,
 	afterEach,
@@ -11,7 +12,6 @@ import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import { initClientFetcher, initStrictClientFetcher } from "./client";
 import { TypedDocumentString } from "./testing";
-import { createSha256 } from "helpers";
 
 const query = new TypedDocumentString(/* GraphQL */ `
 	query myQuery {
@@ -145,6 +145,7 @@ describe("gqlClientFetch", () => {
 			},
 		);
 	});
+
 	it("should perform a mutation", async () => {
 		const spy = spyOnFetch();
 		server.use(
@@ -272,6 +273,64 @@ describe("gqlClientFetch", () => {
 
 		// It should not try to POST the query if the persisted query cannot be parsed
 		expect(spy).toHaveBeenCalledTimes(1);
+	});
+
+	it("should use 'omit' credentials when provided", async () => {
+		const fetcher = initClientFetcher("https://localhost/graphql", {
+			defaultCredentials: "omit",
+		});
+		fetchMock.mockResponse(responseString);
+
+		const gqlResponse = await fetcher(query, {
+			myVar: "baz",
+		});
+
+		expect(gqlResponse).toEqual(response);
+
+		expect(fetchMock).toHaveBeenCalledWith(
+			expect.any(String),
+			expect.objectContaining({
+				credentials: "omit",
+			}),
+		);
+	});
+
+	it("should use 'same-origin' credentials when provided", async () => {
+		const fetcher = initClientFetcher("https://localhost/graphql", {
+			defaultCredentials: "same-origin",
+		});
+		fetchMock.mockResponse(responseString);
+
+		const gqlResponse = await fetcher(query, {
+			myVar: "baz",
+		});
+
+		expect(gqlResponse).toEqual(response);
+
+		expect(fetchMock).toHaveBeenCalledWith(
+			expect.any(String),
+			expect.objectContaining({
+				credentials: "same-origin",
+			}),
+		);
+	});
+
+	it("should use 'include' credentials when provided", async () => {
+		const fetcher = initClientFetcher("https://localhost/graphql");
+		fetchMock.mockResponse(responseString);
+
+		const gqlResponse = await fetcher(query, {
+			myVar: "baz",
+		});
+
+		expect(gqlResponse).toEqual(response);
+
+		expect(fetchMock).toHaveBeenCalledWith(
+			expect.any(String),
+			expect.objectContaining({
+				credentials: "include",
+			}),
+		);
 	});
 
 	it("should use the provided signal", async () => {
