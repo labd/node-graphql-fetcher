@@ -1,5 +1,11 @@
 # @labdigital/react-query-opal
 
+## 2.2.3
+
+### Patch Changes
+
+- 7e84e2a: Fix memory leak because of unclosed spans
+
 ## 2.2.2
 
 ### Patch Changes
