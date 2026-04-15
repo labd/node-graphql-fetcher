@@ -154,7 +154,6 @@ export const initServerFetcher =
 						requestOptions,
 					);
 
-					span.end();
 					return response as GqlResponse<TResponse>;
 				} catch (err: any) {
 					span.setStatus({
@@ -162,6 +161,8 @@ export const initServerFetcher =
 						message: err?.message ?? String(err),
 					});
 					throw err;
+				} finally {
+					span.end();
 				}
 			});
 		}
@@ -178,7 +179,6 @@ export const initServerFetcher =
 						requestOptions,
 					);
 
-					span.end();
 					return response as GqlResponse<TResponse>;
 				} catch (err: unknown) {
 					span.setStatus({
@@ -186,6 +186,8 @@ export const initServerFetcher =
 						message: err instanceof Error ? err.message : String(err),
 					});
 					throw err;
+				} finally {
+					span.end();
 				}
 			});
 		}
@@ -213,7 +215,6 @@ export const initServerFetcher =
 					);
 				}
 
-				span.end();
 				return response as GqlResponse<TResponse>;
 			} catch (err: any) {
 				span.setStatus({
@@ -221,6 +222,8 @@ export const initServerFetcher =
 					message: err?.message ?? String(err),
 				});
 				throw err;
+			} finally {
+				span.end();
 			}
 		});
 	};
