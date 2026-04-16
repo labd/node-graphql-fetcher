@@ -1,4 +1,4 @@
-# @labdigital/react-query-opal
+# @labdigital/graphql-fetcher
 
 ## 2.2.3
 
