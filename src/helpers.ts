@@ -72,6 +72,8 @@ export type Logger = {
 export type RequestContext = {
 	operationName: string;
 	documentId?: string;
+	/** The GraphQL query string, for logging/diagnostics. */
+	query?: string;
 	variables: unknown;
 };
 

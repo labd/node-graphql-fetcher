@@ -566,6 +566,8 @@ describe("onGraphQLErrors", () => {
 			operationName: "myQuery",
 			variables: { myVar: "baz" },
 		});
+		// The query string is available for diagnostics.
+		expect(context.query).toContain("query myQuery");
 		// The full response is available so the callback can inspect partial data.
 		expect(context.response.data).toEqual({ catalogPage: { name: "Tennis" } });
 		expect(context.response.errors).toHaveLength(1);
