@@ -11,6 +11,10 @@ import {
 	type Logger,
 	mergeHeaders,
 	type NextFetchRequestConfig,
+	type OnGraphQLErrors,
+	type OnRequestError,
+	reportGraphQLErrors,
+	reportRequestError,
 } from "./helpers";
 import {
 	createRequest,
@@ -21,7 +25,13 @@ import {
 } from "./request";
 
 export { GraphQLFetcherError } from "./errors";
-export type { Logger } from "./helpers";
+export type {
+	GraphQLErrorContext,
+	Logger,
+	OnGraphQLErrors,
+	OnRequestError,
+	RequestContext,
+} from "./helpers";
 
 type RequestOptions = {
 	/**
@@ -70,6 +80,19 @@ type Options = {
 	 * persisted-query fallbacks that would otherwise be swallowed.
 	 */
 	logger?: Logger;
+
+	/**
+	 * Called when a response carries GraphQL errors (on a 2xx). The library takes
+	 * no action of its own; the callback decides whether to log, ignore, or throw
+	 * to escalate. It is awaited, so throwing rejects the fetch call.
+	 */
+	onGraphQLErrors?: OnGraphQLErrors;
+
+	/**
+	 * Called when a request fails with a thrown error (non-2xx, network, or
+	 * timeout). Observation/escalation only; `throw` to replace the error.
+	 */
+	onRequestError?: OnRequestError;
 };
 
 type CacheOptions = {
@@ -118,6 +141,8 @@ export const initServerFetcher =
 			includeQuery = false,
 			createDocumentId = getDocumentId,
 			logger,
+			onGraphQLErrors,
+			onRequestError,
 		}: Options = {},
 	) =>
 	async <TResponse, TVariables>(
@@ -147,6 +172,20 @@ export const initServerFetcher =
 			headers: mergeHeaders({ ...defaultHeaders, ...options.headers }),
 		};
 
+		// Runs a fetch step and routes a thrown error (non-2xx, network, timeout)
+		// to onRequestError before rethrowing. Scoped to the fetch only, so a
+		// throwing onGraphQLErrors (a GraphQL-error escalation) is not re-reported.
+		const fetchWithErrorReport = async <T>(
+			fetchStep: () => Promise<T>,
+		): Promise<T> => {
+			try {
+				return await fetchStep();
+			} catch (error) {
+				await reportRequestError(error, request, onRequestError);
+				throw error;
+			}
+		};
+
 		// When cache is disabled we always make a POST request and set the
 		// cache to no-store to prevent any caching
 		if (dangerouslyDisableCache) {
@@ -157,14 +196,23 @@ export const initServerFetcher =
 
 			return tracer.startActiveSpan(request.operationName, async (span) => {
 				try {
-					const response = await gqlPost(
-						url,
-						request,
-						{ ...next, cache: "no-store" },
-						requestOptions,
-						logger,
+					const { body: response, httpResponse } = await fetchWithErrorReport(
+						() =>
+							gqlPost(
+								url,
+								request,
+								{ ...next, cache: "no-store" },
+								requestOptions,
+								logger,
+							),
 					);
 
+					await reportGraphQLErrors(
+						response,
+						request,
+						httpResponse,
+						onGraphQLErrors,
+					);
 					return response as GqlResponse<TResponse>;
 				} catch (err: any) {
 					span.setStatus({
@@ -183,14 +231,17 @@ export const initServerFetcher =
 		if (queryType === "mutation") {
 			return tracer.startActiveSpan(request.operationName, async (span) => {
 				try {
-					const response = await gqlPost(
-						url,
-						request,
-						{ cache, next },
-						requestOptions,
-						logger,
+					const { body: response, httpResponse } = await fetchWithErrorReport(
+						() =>
+							gqlPost(url, request, { cache, next }, requestOptions, logger),
 					);
 
+					await reportGraphQLErrors(
+						response,
+						request,
+						httpResponse,
+						onGraphQLErrors,
+					);
 					return response as GqlResponse<TResponse>;
 				} catch (err: unknown) {
 					span.setStatus({
@@ -207,12 +258,14 @@ export const initServerFetcher =
 		// Otherwise, try to get the cached query
 		return tracer.startActiveSpan(request.operationName, async (span) => {
 			try {
-				let response = await gqlPersistedQuery(
-					url,
-					request,
-					{ cache, next },
-					requestOptions,
-					logger,
+				let { body: response, httpResponse } = await fetchWithErrorReport(() =>
+					gqlPersistedQuery(
+						url,
+						request,
+						{ cache, next },
+						requestOptions,
+						logger,
+					),
 				);
 
 				// If this is not a persisted query, but we tried to use automatic
@@ -223,15 +276,17 @@ export const initServerFetcher =
 					});
 					// If the cached query doesn't exist, fall back to POST request and
 					// let the server cache it.
-					response = await gqlPost(
-						url,
-						request,
-						{ cache, next },
-						requestOptions,
-						logger,
-					);
+					({ body: response, httpResponse } = await fetchWithErrorReport(() =>
+						gqlPost(url, request, { cache, next }, requestOptions, logger),
+					));
 				}
 
+				await reportGraphQLErrors(
+					response,
+					request,
+					httpResponse,
+					onGraphQLErrors,
+				);
 				return response as GqlResponse<TResponse>;
 			} catch (err: any) {
 				span.setStatus({
@@ -264,7 +319,10 @@ const gqlPost = async <TVariables>(
 		signal: options.signal,
 	});
 
-	return parseResponse(request, response, logger);
+	return {
+		body: await parseResponse(request, response, logger),
+		httpResponse: response,
+	};
 };
 
 const gqlPersistedQuery = async <TVariables>(
@@ -283,7 +341,10 @@ const gqlPersistedQuery = async <TVariables>(
 		signal: options.signal,
 	});
 
-	return parseResponse(request, response, logger);
+	return {
+		body: await parseResponse(request, response, logger),
+		httpResponse: response,
+	};
 };
 
 /**

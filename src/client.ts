@@ -15,6 +15,10 @@ import {
 	hasPersistedQueryError,
 	type Logger,
 	mergeHeaders,
+	type OnGraphQLErrors,
+	type OnRequestError,
+	reportGraphQLErrors,
+	reportRequestError,
 } from "./helpers";
 
 /**
@@ -100,11 +104,25 @@ type Options = {
 	retry?: RetryOptions;
 
 	/**
-	 * Optional logger. When set, the fetcher surfaces conditions it would
-	 * otherwise swallow: failed requests, persisted-query fallbacks, GraphQL
-	 * errors returned on a 2xx response, and retries.
+	 * Optional logger. When set, the fetcher surfaces transport-level conditions
+	 * it would otherwise swallow: failed requests, persisted-query fallbacks, and
+	 * retries.
 	 */
 	logger?: Logger;
+
+	/**
+	 * Called when a response carries GraphQL errors (on a 2xx). The library takes
+	 * no action of its own; the callback decides whether to log, ignore, or throw
+	 * to escalate. It is awaited, so throwing rejects the fetch call.
+	 */
+	onGraphQLErrors?: OnGraphQLErrors;
+
+	/**
+	 * Called when a request fails with a thrown error (non-2xx, network, or
+	 * timeout), terminally after any retries. Observation/escalation only and
+	 * orthogonal to `retry`; `throw` to replace the error.
+	 */
+	onRequestError?: OnRequestError;
 };
 
 type RequestOptions = {
@@ -162,6 +180,8 @@ export const initClientFetcher =
 			createDocumentId = getDocumentId,
 			retry,
 			logger,
+			onGraphQLErrors,
+			onRequestError,
 		}: Options = {},
 	): ClientFetcher =>
 	/**
@@ -200,6 +220,10 @@ export const initClientFetcher =
 
 		apq = apq || persistedQueries;
 
+		// Holds the raw HTTP response of the final attempt so it can be handed to
+		// `onGraphQLErrors`. Set on every successful parse.
+		let httpResponse: Response | undefined;
+
 		// A single end-to-end attempt: the (optional) persisted GET plus the POST
 		// fallback. The retry wrapper re-runs this whole function, so cookies
 		// refreshed in `onRetry` are picked up on the next attempt.
@@ -209,7 +233,7 @@ export const initClientFetcher =
 			// For queries we can use GET requests if persisted queries are enabled
 			if (queryType === "query" && (apq || isPersistedQuery(request))) {
 				const url = createRequestURL(endpoint, request);
-				response = await parseResponse<GqlResponse<TResponse>>(
+				const parsed = await parseResponse<GqlResponse<TResponse>>(
 					() =>
 						fetch(url.toString(), {
 							headers: headers,
@@ -220,6 +244,8 @@ export const initClientFetcher =
 					request.operationName,
 					logger,
 				);
+				response = parsed.body;
+				httpResponse = parsed.response;
 			}
 
 			// For failed APQ calls or mutations we need to fall back to POST requests
@@ -238,7 +264,7 @@ export const initClientFetcher =
 
 				// Persisted query not used or found, fall back to POST request and
 				// include extension to cache the query on the server
-				response = await parseResponse<GqlResponse<TResponse>>(
+				const parsed = await parseResponse<GqlResponse<TResponse>>(
 					() =>
 						fetch(url.toString(), {
 							headers: headers,
@@ -250,26 +276,42 @@ export const initClientFetcher =
 					request.operationName,
 					logger,
 				);
-			}
-
-			// Surface GraphQL errors that come back on a 2xx -- these are returned
-			// in the response and routinely ignored by callers. The expected
-			// PersistedQueryNotFound signal is excluded as it drives the fallback
-			// above rather than being a real failure.
-			const errors = response.errors?.filter(
-				(error) => error.message !== "PersistedQueryNotFound",
-			);
-			if (errors?.length) {
-				logger?.warn?.("GraphQL response contained errors", {
-					operationName: request.operationName,
-					errors,
-				});
+				response = parsed.body;
+				httpResponse = parsed.response;
 			}
 
 			return response;
 		};
 
-		return runWithRetry(execute, retry, logger);
+		const requestContext = {
+			operationName: request.operationName,
+			documentId: request.documentId,
+			variables: request.variables,
+		};
+
+		// A thrown error (non-2xx, network, timeout) is terminal after retries.
+		// Hand it to onRequestError before it propagates. onGraphQLErrors lives
+		// outside this try, so its escalation throws are not re-reported here.
+		let result: GqlResponse<TResponse>;
+		try {
+			result = await runWithRetry(execute, retry, logger);
+		} catch (error) {
+			await reportRequestError(error, requestContext, onRequestError);
+			throw error;
+		}
+
+		// GraphQL errors on a 2xx are handed to the consumer's callback (which may
+		// log, ignore, or throw). Done after the retry loop so a throwing callback
+		// rejects cleanly rather than being treated as a retryable failure. A
+		// resolved result always means a successful parse, so httpResponse is set.
+		await reportGraphQLErrors(
+			result,
+			requestContext,
+			httpResponse as Response,
+			onGraphQLErrors,
+		);
+
+		return result;
 	};
 
 /**
@@ -323,8 +365,9 @@ const runWithRetry = async <T>(
 };
 
 /**
- * Checks if fetch succeeded and parses the response body
- * @returns GraphQL response body
+ * Checks if fetch succeeded and parses the response body, returning both the
+ * parsed body and the raw `Response` (the latter so callers can read headers /
+ * status for `onGraphQLErrors`).
  * @param fetchFn
  * @param operationName operation name, attached to the thrown error for context
  */
@@ -332,7 +375,7 @@ const parseResponse = async <T>(
 	fetchFn: () => Promise<Response>,
 	operationName?: string,
 	logger?: Logger,
-): Promise<T> => {
+): Promise<{ body: T; response: Response }> => {
 	const response = await fetchFn();
 	if (!response.ok) {
 		const error = await GraphQLFetcherError.fromResponse(
@@ -348,5 +391,5 @@ const parseResponse = async <T>(
 		throw error;
 	}
 
-	return (await response.json()) as T;
+	return { body: (await response.json()) as T, response };
 };
