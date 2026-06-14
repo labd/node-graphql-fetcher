@@ -1,7 +1,7 @@
 import type { ClientFetcher } from "client";
+import type { PropsWithChildren } from "react";
 import { createContext, useContext } from "react";
 import invariant from "tiny-invariant";
-import type { PropsWithChildren } from "react";
 
 /**
  * Context to provide the fetcher for the API used during client side calls

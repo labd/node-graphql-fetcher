@@ -1,8 +1,14 @@
+export type {
+	ClientFetcher,
+	RetryContext,
+	RetryOptions,
+	StrictClientFetcher,
+} from "./client";
 export { initClientFetcher, initStrictClientFetcher } from "./client";
-export type { ClientFetcher, StrictClientFetcher } from "./client";
+export { GraphQLFetcherError } from "./errors";
+export type { GqlResponse, GraphQLError, Logger } from "./helpers";
 export { ClientGqlFetcherProvider, useClientGqlFetcher } from "./provider";
 export {
 	StrictClientGqlFetcherProvider,
 	useStrictClientGqlFetcher,
 } from "./strict-provider";
-export type { GraphQLError, GqlResponse } from "./helpers";

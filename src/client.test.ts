@@ -1,3 +1,6 @@
+import { createSha256 } from "helpers";
+import { HttpResponse, http } from "msw";
+import { setupServer } from "msw/node";
 import {
 	afterAll,
 	afterEach,
@@ -7,11 +10,9 @@ import {
 	it,
 	vi,
 } from "vitest";
-import { http, HttpResponse } from "msw";
-import { setupServer } from "msw/node";
 import { initClientFetcher, initStrictClientFetcher } from "./client";
+import { GraphQLFetcherError } from "./errors";
 import { TypedDocumentString } from "./testing";
-import { createSha256 } from "helpers";
 
 const query = new TypedDocumentString(/* GraphQL */ `
 	query myQuery {
@@ -350,6 +351,184 @@ describe("gqlClientFetch", () => {
 				}),
 				signal: expect.any(AbortSignal),
 			},
+		);
+	});
+});
+
+describe("GraphQLFetcherError", () => {
+	it("carries the status, statusText and parsed body of a non-2xx response", async () => {
+		const body = { errors: [{ message: "nope" }] };
+		server.use(
+			http.post("https://localhost/graphql", () =>
+				HttpResponse.json(body, { status: 401, statusText: "Unauthorized" }),
+			),
+		);
+
+		const fetcher = initClientFetcher("https://localhost/graphql");
+		const error = await fetcher(query, { myVar: "baz" }).catch((e) => e);
+
+		expect(error).toBeInstanceOf(GraphQLFetcherError);
+		expect(error.status).toBe(401);
+		expect(error.statusText).toBe("Unauthorized");
+		expect(error.body).toEqual(body);
+	});
+});
+
+describe("retry", () => {
+	it("retries an HTTP 401 once after onRetry, then succeeds", async () => {
+		const spy = spyOnFetch();
+		let call = 0;
+		server.use(
+			http.post("https://localhost/graphql", () => {
+				call++;
+				return call === 1
+					? HttpResponse.json({}, { status: 401 })
+					: HttpResponse.text(successResponse);
+			}),
+		);
+
+		const onRetry = vi.fn();
+		const fetcher = initClientFetcher("https://localhost/graphql", {
+			retry: {
+				shouldRetry: (ctx) =>
+					ctx.error instanceof GraphQLFetcherError && ctx.error.status === 401,
+				onRetry,
+			},
+		});
+
+		const result = await fetcher(query, { myVar: "baz" });
+
+		expect(result).toEqual(response);
+		expect(onRetry).toHaveBeenCalledTimes(1);
+		expect(spy).toHaveBeenCalledTimes(2);
+	});
+
+	it("retries on a GraphQL error code returned with a 2xx", async () => {
+		let call = 0;
+		server.use(
+			http.post("https://localhost/graphql", () => {
+				call++;
+				return call === 1
+					? HttpResponse.json({
+							data: null,
+							errors: [{ extensions: { code: "REQUIRES_SESSION" } }],
+						})
+					: HttpResponse.text(successResponse);
+			}),
+		);
+
+		const fetcher = initClientFetcher("https://localhost/graphql", {
+			retry: {
+				shouldRetry: (ctx) =>
+					ctx.result?.errors?.some(
+						(e) => e.extensions?.code === "REQUIRES_SESSION",
+					) ?? false,
+			},
+		});
+
+		const result = await fetcher(query, { myVar: "baz" });
+		expect(result).toEqual(response);
+	});
+
+	it("does not retry when shouldRetry returns false", async () => {
+		const spy = spyOnFetch();
+		server.use(
+			http.post("https://localhost/graphql", () =>
+				HttpResponse.json({}, { status: 401 }),
+			),
+		);
+
+		const fetcher = initClientFetcher("https://localhost/graphql", {
+			retry: { shouldRetry: () => false },
+		});
+
+		await expect(fetcher(query, { myVar: "baz" })).rejects.toBeInstanceOf(
+			GraphQLFetcherError,
+		);
+		expect(spy).toHaveBeenCalledTimes(1);
+	});
+
+	it("retries at most `max` times then throws", async () => {
+		const spy = spyOnFetch();
+		server.use(
+			http.post("https://localhost/graphql", () =>
+				HttpResponse.json({}, { status: 401 }),
+			),
+		);
+
+		const fetcher = initClientFetcher("https://localhost/graphql", {
+			retry: { max: 2, shouldRetry: () => true },
+		});
+
+		await expect(fetcher(query, { myVar: "baz" })).rejects.toBeInstanceOf(
+			GraphQLFetcherError,
+		);
+		// initial attempt + 2 retries
+		expect(spy).toHaveBeenCalledTimes(3);
+	});
+});
+
+describe("logger", () => {
+	it("logs an error when a request fails with a non-2xx", async () => {
+		server.use(
+			http.post("https://localhost/graphql", () =>
+				HttpResponse.json({ errors: [{ message: "nope" }] }, { status: 500 }),
+			),
+		);
+
+		const logger = { debug: vi.fn(), warn: vi.fn(), error: vi.fn() };
+		const fetcher = initClientFetcher("https://localhost/graphql", { logger });
+
+		await expect(fetcher(query, { myVar: "baz" })).rejects.toBeInstanceOf(
+			GraphQLFetcherError,
+		);
+		expect(logger.error).toHaveBeenCalledWith(
+			expect.stringContaining("500"),
+			expect.objectContaining({ status: 500, operationName: "myQuery" }),
+		);
+	});
+
+	it("warns when a 2xx response carries GraphQL errors", async () => {
+		server.use(
+			http.post("https://localhost/graphql", () =>
+				HttpResponse.json({
+					data: null,
+					errors: [{ message: "boom" }],
+				}),
+			),
+		);
+
+		const logger = { warn: vi.fn() };
+		const fetcher = initClientFetcher("https://localhost/graphql", { logger });
+
+		await fetcher(query, { myVar: "baz" });
+		expect(logger.warn).toHaveBeenCalledWith(
+			"GraphQL response contained errors",
+			expect.objectContaining({ operationName: "myQuery" }),
+		);
+	});
+
+	it("does not warn for the PersistedQueryNotFound fallback signal", async () => {
+		server.use(
+			http.get("https://localhost/graphql", () =>
+				HttpResponse.text(errorResponse),
+			),
+			http.post("https://localhost/graphql", () =>
+				HttpResponse.text(successResponse),
+			),
+		);
+
+		const logger = { debug: vi.fn(), warn: vi.fn() };
+		const fetcher = initClientFetcher("https://localhost/graphql", {
+			persistedQueries: true,
+			logger,
+		});
+
+		await fetcher(query, { myVar: "baz" });
+		expect(logger.warn).not.toHaveBeenCalled();
+		expect(logger.debug).toHaveBeenCalledWith(
+			"Persisted query not found, falling back to POST",
+			expect.objectContaining({ operationName: "myQuery" }),
 		);
 	});
 });

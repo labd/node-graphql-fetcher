@@ -1,16 +1,17 @@
 import type { DocumentTypeDecoration } from "@graphql-typed-document-node/core";
 import { SpanStatusCode, trace } from "@opentelemetry/api";
-import invariant from "tiny-invariant";
+import { type GraphQLError, print } from "graphql";
+import { toe } from "graphql-toe";
+import { GraphQLFetcherError } from "./errors";
 import {
-	getDocumentId,
 	type GqlResponse,
-	type NextFetchRequestConfig,
-	errorMessage,
+	getDocumentId,
 	getQueryType,
-	mergeHeaders,
 	hasPersistedQueryError,
+	type Logger,
+	mergeHeaders,
+	type NextFetchRequestConfig,
 } from "./helpers";
-import { print, type GraphQLError } from "graphql";
 import {
 	createRequest,
 	createRequestBody,
@@ -18,7 +19,9 @@ import {
 	type GraphQLRequest,
 	isPersistedQuery,
 } from "./request";
-import { toe } from "graphql-toe";
+
+export { GraphQLFetcherError } from "./errors";
+export type { Logger } from "./helpers";
 
 type RequestOptions = {
 	/**
@@ -61,6 +64,12 @@ type Options = {
 	createDocumentId?: <TResult, TVariables>(
 		query: DocumentTypeDecoration<TResult, TVariables>,
 	) => string | undefined;
+
+	/**
+	 * Optional logger. When set, the fetcher surfaces failed requests and
+	 * persisted-query fallbacks that would otherwise be swallowed.
+	 */
+	logger?: Logger;
 };
 
 type CacheOptions = {
@@ -108,6 +117,7 @@ export const initServerFetcher =
 			defaultHeaders = {},
 			includeQuery = false,
 			createDocumentId = getDocumentId,
+			logger,
 		}: Options = {},
 	) =>
 	async <TResponse, TVariables>(
@@ -152,6 +162,7 @@ export const initServerFetcher =
 						request,
 						{ ...next, cache: "no-store" },
 						requestOptions,
+						logger,
 					);
 
 					return response as GqlResponse<TResponse>;
@@ -177,6 +188,7 @@ export const initServerFetcher =
 						request,
 						{ cache, next },
 						requestOptions,
+						logger,
 					);
 
 					return response as GqlResponse<TResponse>;
@@ -200,11 +212,15 @@ export const initServerFetcher =
 					request,
 					{ cache, next },
 					requestOptions,
+					logger,
 				);
 
 				// If this is not a persisted query, but we tried to use automatic
 				// persisted queries (APQ) then we retry with a POST
 				if (!isPersistedQuery(request) && hasPersistedQueryError(response)) {
+					logger?.debug?.("Persisted query not found, falling back to POST", {
+						operationName: request.operationName,
+					});
 					// If the cached query doesn't exist, fall back to POST request and
 					// let the server cache it.
 					response = await gqlPost(
@@ -212,6 +228,7 @@ export const initServerFetcher =
 						request,
 						{ cache, next },
 						requestOptions,
+						logger,
 					);
 				}
 
@@ -233,6 +250,7 @@ const gqlPost = async <TVariables>(
 	request: GraphQLRequest<TVariables>,
 	{ cache, next }: CacheOptions,
 	options: RequestOptions,
+	logger?: Logger,
 ) => {
 	const endpoint = new URL(url);
 	endpoint.searchParams.append("op", request.operationName);
@@ -246,7 +264,7 @@ const gqlPost = async <TVariables>(
 		signal: options.signal,
 	});
 
-	return parseResponse(request, response);
+	return parseResponse(request, response, logger);
 };
 
 const gqlPersistedQuery = async <TVariables>(
@@ -254,6 +272,7 @@ const gqlPersistedQuery = async <TVariables>(
 	request: GraphQLRequest<TVariables>,
 	{ cache, next }: CacheOptions,
 	options: RequestOptions,
+	logger?: Logger,
 ) => {
 	const url = createRequestURL(endpoint, request);
 	const response = await fetch(url.toString(), {
@@ -264,7 +283,7 @@ const gqlPersistedQuery = async <TVariables>(
 		signal: options.signal,
 	});
 
-	return parseResponse(request, response);
+	return parseResponse(request, response, logger);
 };
 
 /**
@@ -275,13 +294,21 @@ const gqlPersistedQuery = async <TVariables>(
 const parseResponse = async (
 	request: GraphQLRequest<unknown>,
 	response: Response,
+	logger?: Logger,
 ) => {
-	invariant(
-		response.ok,
-		errorMessage(
-			`Response for ${request.operationName} errored: ${response.status} ${response.statusText}`,
-		),
-	);
+	if (!response.ok) {
+		const error = await GraphQLFetcherError.fromResponse(
+			response,
+			request.operationName,
+		);
+		logger?.error?.(error.message, {
+			operationName: request.operationName,
+			status: error.status,
+			statusText: error.statusText,
+			body: error.body,
+		});
+		throw error;
+	}
 
 	return await response.json();
 };
