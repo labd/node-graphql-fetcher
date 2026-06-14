@@ -1,0 +1,7 @@
+allowBuilds:
+  '@apollo/protobufjs': true
+  msw: true
+minimumReleaseAge: 10080
+minimumReleaseAgeExclude:
+  - '@types/node@25.9.3'
+trustPolicy: "no-downgrade"
