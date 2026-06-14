@@ -286,6 +286,7 @@ export const initClientFetcher =
 		const requestContext = {
 			operationName: request.operationName,
 			documentId: request.documentId,
+			query: request.query,
 			variables: request.variables,
 		};
 
