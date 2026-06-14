@@ -488,7 +488,7 @@ describe("logger", () => {
 		);
 	});
 
-	it("warns when a 2xx response carries GraphQL errors", async () => {
+	it("does not use the logger for GraphQL errors on a 2xx (that is onGraphQLErrors' job)", async () => {
 		server.use(
 			http.post("https://localhost/graphql", () =>
 				HttpResponse.json({
@@ -498,14 +498,12 @@ describe("logger", () => {
 			),
 		);
 
-		const logger = { warn: vi.fn() };
+		const logger = { warn: vi.fn(), error: vi.fn() };
 		const fetcher = initClientFetcher("https://localhost/graphql", { logger });
 
 		await fetcher(query, { myVar: "baz" });
-		expect(logger.warn).toHaveBeenCalledWith(
-			"GraphQL response contained errors",
-			expect.objectContaining({ operationName: "myQuery" }),
-		);
+		expect(logger.warn).not.toHaveBeenCalled();
+		expect(logger.error).not.toHaveBeenCalled();
 	});
 
 	it("does not warn for the PersistedQueryNotFound fallback signal", async () => {
@@ -530,6 +528,184 @@ describe("logger", () => {
 			"Persisted query not found, falling back to POST",
 			expect.objectContaining({ operationName: "myQuery" }),
 		);
+	});
+});
+
+describe("onGraphQLErrors", () => {
+	const errorResponseBody = JSON.stringify({
+		data: { catalogPage: { name: "Tennis" } },
+		errors: [
+			{
+				message: "Category not found",
+				path: ["catalogPage", "productListingConfig"],
+				extensions: { code: "NOT_FOUND" },
+			},
+		],
+	});
+
+	it("calls the hook with errors and request context on a 2xx-with-errors", async () => {
+		server.use(
+			http.post("https://localhost/graphql", () =>
+				HttpResponse.text(errorResponseBody, {
+					headers: { "x-request-id": "req-123" },
+				}),
+			),
+		);
+
+		const onGraphQLErrors = vi.fn();
+		const fetcher = initClientFetcher("https://localhost/graphql", {
+			onGraphQLErrors,
+		});
+
+		await fetcher(query, { myVar: "baz" });
+
+		expect(onGraphQLErrors).toHaveBeenCalledTimes(1);
+		const [errors, context] = onGraphQLErrors.mock.calls[0];
+		expect(errors[0].message).toBe("Category not found");
+		expect(context).toMatchObject({
+			operationName: "myQuery",
+			variables: { myVar: "baz" },
+		});
+		// The full response is available so the callback can inspect partial data.
+		expect(context.response.data).toEqual({ catalogPage: { name: "Tennis" } });
+		expect(context.response.errors).toHaveLength(1);
+		// The raw HTTP response exposes status and headers.
+		expect(context.httpResponse.status).toBe(200);
+		expect(context.httpResponse.headers.get("x-request-id")).toBe("req-123");
+	});
+
+	it("is not called for a clean response", async () => {
+		server.use(
+			http.post("https://localhost/graphql", () =>
+				HttpResponse.text(successResponse),
+			),
+		);
+
+		const onGraphQLErrors = vi.fn();
+		const fetcher = initClientFetcher("https://localhost/graphql", {
+			onGraphQLErrors,
+		});
+
+		await fetcher(query, { myVar: "baz" });
+		expect(onGraphQLErrors).not.toHaveBeenCalled();
+	});
+
+	it("does not fire for the PersistedQueryNotFound fallback signal", async () => {
+		server.use(
+			http.get("https://localhost/graphql", () =>
+				HttpResponse.text(errorResponse),
+			),
+			http.post("https://localhost/graphql", () =>
+				HttpResponse.text(successResponse),
+			),
+		);
+
+		const onGraphQLErrors = vi.fn();
+		const fetcher = initClientFetcher("https://localhost/graphql", {
+			persistedQueries: true,
+			onGraphQLErrors,
+		});
+
+		await fetcher(query, { myVar: "baz" });
+		expect(onGraphQLErrors).not.toHaveBeenCalled();
+	});
+
+	it("rejects the fetch call when the hook throws (escalate path)", async () => {
+		server.use(
+			http.post("https://localhost/graphql", () =>
+				HttpResponse.text(errorResponseBody),
+			),
+		);
+
+		const fetcher = initClientFetcher("https://localhost/graphql", {
+			onGraphQLErrors: (errors) => {
+				throw new Error(errors[0].message);
+			},
+		});
+
+		await expect(fetcher(query, { myVar: "baz" })).rejects.toThrow(
+			"Category not found",
+		);
+	});
+});
+
+describe("onRequestError", () => {
+	it("is called with the thrown error on a non-2xx", async () => {
+		server.use(
+			http.post("https://localhost/graphql", () =>
+				HttpResponse.json({}, { status: 500 }),
+			),
+		);
+
+		const onRequestError = vi.fn();
+		const fetcher = initClientFetcher("https://localhost/graphql", {
+			onRequestError,
+		});
+
+		await expect(fetcher(query, { myVar: "baz" })).rejects.toBeInstanceOf(
+			GraphQLFetcherError,
+		);
+		expect(onRequestError).toHaveBeenCalledTimes(1);
+		const [error, context] = onRequestError.mock.calls[0];
+		expect(error).toBeInstanceOf(GraphQLFetcherError);
+		expect(error.status).toBe(500);
+		expect(context).toMatchObject({ operationName: "myQuery" });
+	});
+
+	it("is not called for a successful response", async () => {
+		server.use(
+			http.post("https://localhost/graphql", () =>
+				HttpResponse.text(successResponse),
+			),
+		);
+
+		const onRequestError = vi.fn();
+		const fetcher = initClientFetcher("https://localhost/graphql", {
+			onRequestError,
+		});
+
+		await fetcher(query, { myVar: "baz" });
+		expect(onRequestError).not.toHaveBeenCalled();
+	});
+
+	it("fires once, after retries are exhausted", async () => {
+		const spy = spyOnFetch();
+		server.use(
+			http.post("https://localhost/graphql", () =>
+				HttpResponse.json({}, { status: 401 }),
+			),
+		);
+
+		const onRequestError = vi.fn();
+		const fetcher = initClientFetcher("https://localhost/graphql", {
+			retry: { max: 2, shouldRetry: () => true },
+			onRequestError,
+		});
+
+		await expect(fetcher(query, { myVar: "baz" })).rejects.toBeInstanceOf(
+			GraphQLFetcherError,
+		);
+		expect(spy).toHaveBeenCalledTimes(3); // initial + 2 retries
+		expect(onRequestError).toHaveBeenCalledTimes(1); // terminal only
+	});
+
+	it("is not triggered when onGraphQLErrors throws (escalation, not a request error)", async () => {
+		server.use(
+			http.post("https://localhost/graphql", () =>
+				HttpResponse.json({ data: null, errors: [{ message: "boom" }] }),
+			),
+		);
+
+		const onRequestError = vi.fn();
+		const fetcher = initClientFetcher("https://localhost/graphql", {
+			onGraphQLErrors: () => {
+				throw new Error("escalated");
+			},
+			onRequestError,
+		});
+
+		await expect(fetcher(query, { myVar: "baz" })).rejects.toThrow("escalated");
+		expect(onRequestError).not.toHaveBeenCalled();
 	});
 });
 

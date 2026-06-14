@@ -13,6 +13,7 @@ Only used for fetching from GraphQL endpoints.
 - Next data cache support
 - Retry hook for refresh-and-retry flows (e.g. on a 401)
 - Typed `GraphQLFetcherError` carrying the HTTP status and response body
+- `onGraphQLErrors` / `onRequestError` hooks to observe or escalate failures
 - Optional structured logger to surface otherwise-swallowed failures
 
 
@@ -104,13 +105,62 @@ try {
 }
 ```
 
+## Error hooks
+
+Two optional hooks let you observe or escalate failures the fetcher would
+otherwise swallow. They are available on both the client and server fetchers.
+The library takes no action of its own — each hook decides whether to log,
+ignore, or `throw` to escalate. Both are **awaited**, so throwing (or returning
+a rejecting promise) rejects the fetch call. They are **orthogonal to `retry`**
+(which controls whether to try again) and fire **terminally**, after any retries
+are exhausted.
+
+### `onGraphQLErrors` — GraphQL errors on a 2xx
+
+Fires when a `2xx` response carries GraphQL errors (e.g. a partial-data response
+where one field errored). These are returned in `errors` and easily ignored,
+which leads to silent failures downstream. The callback receives the errors and
+a context with the request, the parsed `response` (inspect partial `data`), and
+the raw `httpResponse` (status / headers, e.g. a gateway request id). The
+internal `PersistedQueryNotFound` fallback signal is filtered out.
+
+```ts
+const fetcher = initServerFetcher("https://localhost/graphql", {
+	onGraphQLErrors: (errors, { operationName, variables, response }) => {
+		// Log, ignore legitimate partial data, or throw to escalate.
+		logger.warn({ operationName, variables, errors }, "GraphQL errors");
+	},
+});
+```
+
+### `onRequestError` — the request threw
+
+Fires when a request fails with a thrown error: a non-2xx response (a
+`GraphQLFetcherError` carrying `.status` / `.body` / `.response`), or a
+network / timeout error (which otherwise logs nothing at all). It is **not**
+triggered when `onGraphQLErrors` itself throws — that is a GraphQL-error
+escalation, not a request failure.
+
+```ts
+import { GraphQLFetcherError } from "@labdigital/graphql-fetcher";
+
+const fetcher = initServerFetcher("https://localhost/graphql", {
+	onRequestError: (error, { operationName }) => {
+		const status =
+			error instanceof GraphQLFetcherError ? error.status : undefined;
+		logger.error({ operationName, status, err: error }, "Request failed");
+	},
+});
+```
+
 ## Logging
 
 Both `initClientFetcher` and `initServerFetcher` accept an optional `logger`.
-When set, the fetcher surfaces conditions it would otherwise swallow: failed
-requests, persisted-query fallbacks, GraphQL errors returned on a 2xx response,
-and retries. All methods are optional, so you can pass `console` or a partial
-object.
+It surfaces **transport-level** conditions that would otherwise be swallowed:
+failed requests, persisted-query fallbacks, and retries. (GraphQL errors on a
+2xx are handled by `onGraphQLErrors` instead, since whether they are fatal is a
+consumer concern.) All methods are optional, so you can pass `console` or a
+partial object.
 
 ```ts
 const fetcher = initClientFetcher("https://localhost/graphql", {
@@ -123,16 +173,6 @@ const fetcher = initClientFetcher("https://localhost/graphql", {
 ```
 
 ## Notes
-
-### Node 18.x requires webcrypto on globalThis
-
-From node 20.x onwards the WebCrypto API is available on globalThis, versions before 20.x will need a small polyfill:
-
-```
-	if (typeof window === "undefined" && !globalThis.crypto) {
-		globalThis.crypto = require("node:crypto").webcrypto;
-	}
-```
 
 ### Old browsers might need a AbortSignal.timeout() polyfill
 
