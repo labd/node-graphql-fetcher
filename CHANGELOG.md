@@ -1,5 +1,11 @@
 # @labdigital/graphql-fetcher
 
+## 3.0.1
+
+### Patch Changes
+
+- baf8af0: Add the GraphQL `query` string to the error-hook context (`RequestContext`), so `onGraphQLErrors` and `onRequestError` callbacks can log the actual query for diagnostics — not just the `operationName` / `documentId`. Purely additive; existing callbacks are unaffected.
+
 ## 3.0.0
 
 ### Major Changes
