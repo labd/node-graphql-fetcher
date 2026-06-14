@@ -1,5 +1,5 @@
-import type { DocumentTypeDecoration } from "@graphql-typed-document-node/core";
 import { createHash } from "@apollo/utils.createhash";
+import type { DocumentTypeDecoration } from "@graphql-typed-document-node/core";
 
 export const extractOperationName = (query: string) => {
 	const matches = query.match(/(query|mutation)\s(\w+)/);
@@ -48,6 +48,18 @@ export type GraphQLError = {
 export type GqlResponse<TResponse> = {
 	data: TResponse | null;
 	errors: GraphQLError[] | null;
+};
+
+/**
+ * Optional structured logger. All methods are optional, so a partial object
+ * (or `console`) can be passed. The fetcher uses this to surface conditions it
+ * would otherwise swallow -- failed requests, persisted-query fallbacks,
+ * GraphQL errors returned on a 2xx, and retries.
+ */
+export type Logger = {
+	debug?: (message: string, meta?: Record<string, unknown>) => void;
+	warn?: (message: string, meta?: Record<string, unknown>) => void;
+	error?: (message: string, meta?: Record<string, unknown>) => void;
 };
 
 export interface NextFetchRequestConfig {

@@ -1,3 +1,5 @@
+import { HttpResponse, http } from "msw";
+import { setupServer } from "msw/node";
 import {
 	afterAll,
 	afterEach,
@@ -7,8 +9,6 @@ import {
 	it,
 	vi,
 } from "vitest";
-import { http, HttpResponse } from "msw";
-import { setupServer } from "msw/node";
 import { createSha256, pruneObject } from "./helpers";
 import { initServerFetcher, initStrictServerFetcher } from "./server";
 import { TypedDocumentString } from "./testing";
