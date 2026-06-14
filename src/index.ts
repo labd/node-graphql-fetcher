@@ -15,8 +15,6 @@ export type {
 	OnRequestError,
 	RequestContext,
 } from "./helpers";
-export { ClientGqlFetcherProvider, useClientGqlFetcher } from "./provider";
-export {
-	StrictClientGqlFetcherProvider,
-	useStrictClientGqlFetcher,
-} from "./strict-provider";
+
+// React providers/hooks live in the `./react` entry so this root entry stays
+// framework-neutral and safe to import in React Server Components.

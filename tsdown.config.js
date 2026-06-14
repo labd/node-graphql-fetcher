@@ -21,4 +21,14 @@ export default defineConfig([
 		outDir: "dist",
 		fixedExtension: false,
 	},
+	{
+		entry: ["src/react.ts"],
+		clean: true,
+		splitting: false,
+		dts: true,
+		sourcemap: true,
+		format: ["esm", "cjs"],
+		outDir: "dist",
+		fixedExtension: false,
+	},
 ]);
