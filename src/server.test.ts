@@ -158,6 +158,36 @@ describe("gqlServerFetch", () => {
 		);
 	});
 
+	it("should POST the full query when apq is disabled", async () => {
+		const spy = spyOnFetch();
+		server.use(
+			http.post("https://localhost/graphql", () =>
+				HttpResponse.text(successResponse),
+			),
+		);
+
+		const gqlServerFetch = initServerFetcher("https://localhost/graphql", {
+			apq: false,
+		});
+		const gqlResponse = await gqlServerFetch(
+			query,
+			{ myVar: "baz" },
+			{ next: { revalidate: 900 } },
+		);
+
+		expect(gqlResponse).toEqual(response);
+		// A single POST with the full query — no APQ GET round-trip or fallback
+		// (a GET would fail msw's onUnhandledRequest: "error").
+		expect(spy).toHaveBeenCalledTimes(1);
+		const [calledUrl, calledInit] = spy.mock.calls[0] as [string, RequestInit];
+		expect(calledUrl).toBe("https://localhost/graphql?op=myQuery");
+		expect(calledInit.method).toBe("POST");
+		const body = JSON.parse(calledInit.body as string);
+		expect(body.query).toBe(query.toString());
+		expect(body.variables).toEqual({ myVar: "baz" });
+		expect(body.extensions?.persistedQuery).toBeUndefined();
+	});
+
 	it("should skip persisted queries if operation is a mutation", async () => {
 		const spy = spyOnFetch();
 		server.use(

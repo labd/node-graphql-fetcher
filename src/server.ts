@@ -67,6 +67,18 @@ type Options = {
 	includeQuery?: boolean;
 
 	/**
+	 * Enable Automatic Persisted Queries (APQ) for non-persisted operations.
+	 *
+	 * When `false`, operations without a `documentId` are sent as a full-query
+	 * POST directly, skipping the APQ GET round-trip and the
+	 * `PersistedQueryNotFound` fallback. Operations that resolve to a
+	 * `documentId` (persisted/trusted documents) are unaffected.
+	 *
+	 * @default true
+	 */
+	apq?: boolean;
+
+	/**
 	 * Function to customize creating the documentId from a query
 	 *
 	 * @param query
@@ -139,6 +151,7 @@ export const initServerFetcher =
 			defaultTimeout = undefined,
 			defaultHeaders = {},
 			includeQuery = false,
+			apq = true,
 			createDocumentId = getDocumentId,
 			logger,
 			onGraphQLErrors,
@@ -258,19 +271,32 @@ export const initServerFetcher =
 		// Otherwise, try to get the cached query
 		return tracer.startActiveSpan(request.operationName, async (span) => {
 			try {
+				// With APQ disabled, a non-persisted operation is POSTed directly with
+				// the full query — no APQ GET round-trip or PersistedQueryNotFound
+				// fallback. Persisted operations (documentId) still use the GET path.
+				const skipApq = !apq && !isPersistedQuery(request);
+				if (skipApq) {
+					delete request.extensions?.persistedQuery;
+				}
+
 				let { body: response, httpResponse } = await fetchWithErrorReport(() =>
-					gqlPersistedQuery(
-						url,
-						request,
-						{ cache, next },
-						requestOptions,
-						logger,
-					),
+					skipApq
+						? gqlPost(url, request, { cache, next }, requestOptions, logger)
+						: gqlPersistedQuery(
+								url,
+								request,
+								{ cache, next },
+								requestOptions,
+								logger,
+							),
 				);
 
-				// If this is not a persisted query, but we tried to use automatic
-				// persisted queries (APQ) then we retry with a POST
-				if (!isPersistedQuery(request) && hasPersistedQueryError(response)) {
+				// If APQ was used and the server doesn't know the hash, retry via POST
+				if (
+					!skipApq &&
+					!isPersistedQuery(request) &&
+					hasPersistedQueryError(response)
+				) {
 					logger?.debug?.("Persisted query not found, falling back to POST", {
 						operationName: request.operationName,
 					});
