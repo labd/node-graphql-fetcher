@@ -69,12 +69,13 @@ type Options = {
 	/**
 	 * Enable Automatic Persisted Queries (APQ) for non-persisted operations.
 	 *
-	 * When `false`, operations without a `documentId` are sent as a full-query
-	 * POST directly, skipping the APQ GET round-trip and the
-	 * `PersistedQueryNotFound` fallback. Operations that resolve to a
-	 * `documentId` (persisted/trusted documents) are unaffected.
+	 * APQ is opt-in. When disabled (the default), operations without a
+	 * `documentId` are sent as a full-query POST directly, skipping the APQ GET
+	 * round-trip and the `PersistedQueryNotFound` fallback. Operations that
+	 * resolve to a `documentId` (persisted/trusted documents) are always sent as
+	 * a cacheable GET, regardless of this flag.
 	 *
-	 * @default true
+	 * @default false
 	 */
 	apq?: boolean;
 
@@ -151,7 +152,7 @@ export const initServerFetcher =
 			defaultTimeout = undefined,
 			defaultHeaders = {},
 			includeQuery = false,
-			apq = true,
+			apq = false,
 			createDocumentId = getDocumentId,
 			logger,
 			onGraphQLErrors,

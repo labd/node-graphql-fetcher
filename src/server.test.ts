@@ -81,7 +81,9 @@ describe("gqlServerFetch", () => {
 			),
 		);
 
-		const gqlServerFetch = initServerFetcher("https://localhost/graphql");
+		const gqlServerFetch = initServerFetcher("https://localhost/graphql", {
+			apq: true,
+		});
 		const gqlResponse = await gqlServerFetch(
 			query,
 			{ myVar: "baz" },
@@ -124,7 +126,9 @@ describe("gqlServerFetch", () => {
 			),
 		);
 
-		const gqlServerFetch = initServerFetcher("https://localhost/graphql");
+		const gqlServerFetch = initServerFetcher("https://localhost/graphql", {
+			apq: true,
+		});
 		const gqlResponse = await gqlServerFetch(
 			query,
 			{ myVar: "baz" },
@@ -188,6 +192,32 @@ describe("gqlServerFetch", () => {
 		expect(body.extensions?.persistedQuery).toBeUndefined();
 	});
 
+	it("should GET a documentId query even when apq is disabled", async () => {
+		const spy = spyOnFetch();
+		server.use(
+			http.get("https://localhost/graphql", () =>
+				HttpResponse.text(successResponse),
+			),
+		);
+
+		// apq is off (default), but a persisted operation (documentId) must still
+		// use a cacheable GET rather than a POST.
+		const gqlServerFetch = initServerFetcher("https://localhost/graphql", {
+			createDocumentId: () => "my-doc-id",
+		});
+		const gqlResponse = await gqlServerFetch(
+			query,
+			{ myVar: "baz" },
+			{ next: { revalidate: 900 } },
+		);
+
+		expect(gqlResponse).toEqual(response);
+		expect(spy).toHaveBeenCalledTimes(1);
+		const [calledUrl, calledInit] = spy.mock.calls[0] as [string, RequestInit];
+		expect(calledInit.method).toBe("GET");
+		expect(calledUrl).toContain("documentId=my-doc-id");
+	});
+
 	it("should skip persisted queries if operation is a mutation", async () => {
 		const spy = spyOnFetch();
 		server.use(
@@ -238,7 +268,9 @@ describe("gqlServerFetch", () => {
 			),
 		);
 
-		const gqlServerFetch = initServerFetcher("https://localhost/graphql");
+		const gqlServerFetch = initServerFetcher("https://localhost/graphql", {
+			apq: true,
+		});
 		const gqlResponse = await gqlServerFetch(
 			query,
 			{ myVar: "baz" },
@@ -276,7 +308,9 @@ describe("gqlServerFetch", () => {
 			),
 		);
 
-		const gqlServerFetch = initServerFetcher("https://localhost/graphql");
+		const gqlServerFetch = initServerFetcher("https://localhost/graphql", {
+			apq: true,
+		});
 		const gqlResponse = await gqlServerFetch(
 			query,
 			{ myVar: "baz" },
@@ -356,7 +390,9 @@ describe("gqlServerFetch", () => {
 			),
 		);
 
-		const gqlServerFetch = initServerFetcher("https://localhost/graphql");
+		const gqlServerFetch = initServerFetcher("https://localhost/graphql", {
+			apq: true,
+		});
 
 		await gqlServerFetch(query, { myVar: "baz" }, {});
 
@@ -379,6 +415,7 @@ describe("gqlServerFetch", () => {
 
 		const gqlServerFetch = initServerFetcher("https://localhost/graphql", {
 			defaultTimeout: 1,
+			apq: true,
 		});
 
 		await gqlServerFetch(query, { myVar: "baz" }, {});
@@ -453,7 +490,9 @@ describe("gqlServerFetch", () => {
 			),
 		);
 
-		const gqlServerFetch = initServerFetcher("https://localhost/graphql");
+		const gqlServerFetch = initServerFetcher("https://localhost/graphql", {
+			apq: true,
+		});
 
 		const controller = new AbortController();
 		await gqlServerFetch(
@@ -483,7 +522,9 @@ describe("initStrictServerFetcher", () => {
 			),
 		);
 
-		const gqlServerFetch = initStrictServerFetcher("https://localhost/graphql");
+		const gqlServerFetch = initStrictServerFetcher("https://localhost/graphql", {
+			apq: true,
+		});
 		const gqlResponse = await gqlServerFetch(
 			query as any,
 			{ myVar: "baz" },
@@ -518,7 +559,9 @@ describe("initStrictServerFetcher", () => {
 			),
 		);
 
-		const gqlServerFetch = initStrictServerFetcher("https://localhost/graphql");
+		const gqlServerFetch = initStrictServerFetcher("https://localhost/graphql", {
+			apq: true,
+		});
 		const result = await gqlServerFetch(
 			query as any,
 			{ myVar: "baz" },
