@@ -522,9 +522,12 @@ describe("initStrictServerFetcher", () => {
 			),
 		);
 
-		const gqlServerFetch = initStrictServerFetcher("https://localhost/graphql", {
-			apq: true,
-		});
+		const gqlServerFetch = initStrictServerFetcher(
+			"https://localhost/graphql",
+			{
+				apq: true,
+			},
+		);
 		const gqlResponse = await gqlServerFetch(
 			query as any,
 			{ myVar: "baz" },
@@ -559,9 +562,12 @@ describe("initStrictServerFetcher", () => {
 			),
 		);
 
-		const gqlServerFetch = initStrictServerFetcher("https://localhost/graphql", {
-			apq: true,
-		});
+		const gqlServerFetch = initStrictServerFetcher(
+			"https://localhost/graphql",
+			{
+				apq: true,
+			},
+		);
 		const result = await gqlServerFetch(
 			query as any,
 			{ myVar: "baz" },
