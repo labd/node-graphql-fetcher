@@ -5,3 +5,5 @@ minimumReleaseAge: 10080
 minimumReleaseAgeExclude:
   - '@types/node@25.9.3'
 trustPolicy: "no-downgrade"
+overrides:
+  vite@>=8.0.0 <8.1.6: ^8.1.6
