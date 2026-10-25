@@ -31,10 +31,11 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/labd/node-graphql-fetcher"
+		"url": "git+https://github.com/labd/node-graphql-fetcher.git"
 	},
 	"publishConfig": {
-		"access": "public"
+		"access": "public",
+		"provenance": true
 	},
 	"scripts": {
 		"build": "tsdown --env.PACKAGE_VERSION $(jq -r '.version' package.json)",
