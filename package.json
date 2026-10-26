@@ -38,6 +38,7 @@
 		"build": "tsdown --env.PACKAGE_VERSION $(jq -r '.version' package.json)",
 		"format": "biome format --fix",
 		"lint": "biome check",
+		"lint:package": "publint --strict",
 		"publish:ci": "pnpm build && pnpm changeset publish",
 		"publish:version": "pnpm changeset version && pnpm format",
 		"test:ci": "vitest run --coverage",
