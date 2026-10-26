@@ -1,12 +1,6 @@
 import type { DocumentTypeDecoration } from "@graphql-typed-document-node/core";
 import { type GraphQLError, print } from "graphql";
 import { toe } from "graphql-toe";
-import {
-	createRequest,
-	createRequestBody,
-	createRequestURL,
-	isPersistedQuery,
-} from "request";
 import { GraphQLFetcherError } from "./errors";
 import {
 	type GqlResponse,
@@ -20,6 +14,12 @@ import {
 	reportGraphQLErrors,
 	reportRequestError,
 } from "./helpers";
+import {
+	createRequest,
+	createRequestBody,
+	createRequestURL,
+	isPersistedQuery,
+} from "./request";
 
 /**
  * Context passed to the retry callbacks describing the attempt that just
