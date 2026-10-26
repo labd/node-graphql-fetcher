@@ -1,5 +1,6 @@
 # @labdigital/graphql-fetcher
-<a href="https://npm.im/@labdigital/graphql-fetcher"><img src="https://badgen.net/npm/v/@labdigital/graphql-fetcher"></a> <a href="https://npm.im/@labdigital/graphql-fetcher">
+
+[![npm](https://img.shields.io/npm/v/@labdigital/graphql-fetcher)](https://www.npmjs.com/package/@labdigital/graphql-fetcher)
 
 Opinionated `fetch` wrappers for our client and server side queries in our Next.js frontends.
 Only used for fetching from GraphQL endpoints.
