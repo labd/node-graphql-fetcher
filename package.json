@@ -3,8 +3,7 @@
 	"version": "3.1.0",
 	"description": "Custom fetcher for react-query to use with @labdigital/node-federated-token",
 	"type": "module",
-	"main": "./dist/index.cjs",
-	"module": "./dist/index.js",
+	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
 	"keywords": [
 		"graphql",
@@ -13,19 +12,17 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/index.js",
-			"require": "./dist/index.cjs"
+			"default": "./dist/index.js"
 		},
 		"./server": {
 			"types": "./dist/server.d.ts",
-			"import": "./dist/server.js",
-			"require": "./dist/server.cjs"
+			"default": "./dist/server.js"
 		},
 		"./react": {
 			"types": "./dist/react.d.ts",
-			"import": "./dist/react.js",
-			"require": "./dist/react.cjs"
-		}
+			"default": "./dist/react.js"
+		},
+		"./package.json": "./package.json"
 	},
 	"author": "Lab Digital <opensource@labdigital.nl>",
 	"license": "MIT",
@@ -65,6 +62,7 @@
 		"@vitest/coverage-v8": "5.0.5",
 		"knip": "^6.42.0",
 		"msw": "^3.0.3",
+		"publint": "^0.3.25",
 		"tsdown": "^0.23.1",
 		"typescript": "7.0.2",
 		"vitest": "5.0.5"
