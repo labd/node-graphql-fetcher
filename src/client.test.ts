@@ -61,6 +61,7 @@ let fetchSpy: ReturnType<typeof vi.spyOn>;
 
 beforeAll(() => server.listen({ onUnhandledFrame: "error" }));
 afterEach(() => {
+	vi.useRealTimers();
 	server.resetHandlers();
 	fetchSpy?.mockRestore();
 });

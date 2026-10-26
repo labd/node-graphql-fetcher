@@ -62,6 +62,7 @@ let fetchSpy: ReturnType<typeof vi.spyOn>;
 
 beforeAll(() => server.listen({ onUnhandledFrame: "error" }));
 afterEach(() => {
+	vi.useRealTimers();
 	server.resetHandlers();
 	fetchSpy?.mockRestore();
 });
@@ -456,7 +457,9 @@ describe("gqlServerFetch", () => {
 			),
 		);
 
-		const gqlServerFetch = initServerFetcher("https://localhost/graphql");
+		const gqlServerFetch = initServerFetcher("https://localhost/graphql", {
+			apq: true,
+		});
 
 		await expect(() =>
 			gqlServerFetch(query, { myVar: "baz" }, {}),
@@ -472,7 +475,9 @@ describe("gqlServerFetch", () => {
 			http.get("https://localhost/graphql", () => HttpResponse.error()),
 		);
 
-		const gqlServerFetch = initServerFetcher("https://localhost/graphql");
+		const gqlServerFetch = initServerFetcher("https://localhost/graphql", {
+			apq: true,
+		});
 
 		await expect(() =>
 			gqlServerFetch(query, { myVar: "baz" }, {}),
