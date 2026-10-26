@@ -1,4 +1,4 @@
-import { createSha256, extractOperationName, pruneObject } from "helpers";
+import { createSha256, extractOperationName, pruneObject } from "./helpers";
 export type GraphQLRequest<TVariables> = {
 	operationName: string;
 	query: string | undefined;

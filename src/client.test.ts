@@ -1,4 +1,3 @@
-import { createSha256 } from "helpers";
 import { HttpResponse, http } from "msw";
 import { setupServer } from "msw/node";
 import {
@@ -12,6 +11,7 @@ import {
 } from "vitest";
 import { initClientFetcher, initStrictClientFetcher } from "./client";
 import { GraphQLFetcherError } from "./errors";
+import { createSha256 } from "./helpers";
 import { TypedDocumentString } from "./testing";
 
 const query = new TypedDocumentString(/* GraphQL */ `
@@ -59,7 +59,7 @@ const nestedErrorResponse = JSON.stringify({
 const server = setupServer();
 let fetchSpy: ReturnType<typeof vi.spyOn>;
 
-beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
+beforeAll(() => server.listen({ onUnhandledFrame: "error" }));
 afterEach(() => {
 	server.resetHandlers();
 	fetchSpy?.mockRestore();

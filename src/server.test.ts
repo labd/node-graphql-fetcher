@@ -60,7 +60,7 @@ const nestedErrorResponse = JSON.stringify({
 const server = setupServer();
 let fetchSpy: ReturnType<typeof vi.spyOn>;
 
-beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
+beforeAll(() => server.listen({ onUnhandledFrame: "error" }));
 afterEach(() => {
 	server.resetHandlers();
 	fetchSpy?.mockRestore();
@@ -181,7 +181,7 @@ describe("gqlServerFetch", () => {
 
 		expect(gqlResponse).toEqual(response);
 		// A single POST with the full query — no APQ GET round-trip or fallback
-		// (a GET would fail msw's onUnhandledRequest: "error").
+		// (a GET would fail msw's onUnhandledFrame: "error").
 		expect(spy).toHaveBeenCalledTimes(1);
 		const [calledUrl, calledInit] = spy.mock.calls[0] as [string, RequestInit];
 		expect(calledUrl).toBe("https://localhost/graphql?op=myQuery");
