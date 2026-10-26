@@ -1,5 +1,12 @@
 # @labdigital/graphql-fetcher
 
+## 3.2.0
+
+### Minor Changes
+
+- c2918c9: Publish as ESM-only. The CommonJS builds (`dist/*.cjs`) are removed; the `.`, `./server` and `./react` entry points now ship `dist/<entry>.js` + `dist/<entry>.d.ts` with `types` and `default` conditions. This also fixes the type resolution for `require`, which previously used the ESM declarations. CommonJS consumers on Node.js >= 22.12 can still `require()` the package.
+- 4e62e93: Require Node.js >= 22 (Node 20 is EOL) and update development dependencies to resolve security advisories (vitest 4.1.12, @changesets/cli 3, knip 6.41, vite 8.3, postcss 8.5.30).
+
 ## 3.1.0
 
 ### Minor Changes
